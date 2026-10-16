@@ -103,7 +103,10 @@ def summarize(r):
     if d.get("executionLogs"):
         out.append(d["executionLogs"].replace("\\n", "\n"))
     if not r.get("success", True) or d.get("isExecutionSuccessful") is False:
-        out.append("FAILED: " + json.dumps(r)[:3000])
+        err = r.get("error", json.dumps(r))
+        # shader-compile warnings during builds are reported as errors by the tool; show only real errors
+        lines = [l for l in err.split("\n") if ("[Error]" in l or "[Exception]" in l or "error" in l.lower()) and "Shader warning" not in l]
+        out.append("FAILED/WARN: " + ("\n".join(lines[:30]) if lines else err[:300]))
     return "\n".join(out)
 
 

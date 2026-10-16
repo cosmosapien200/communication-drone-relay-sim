@@ -1,0 +1,3 @@
+#!/bin/sh
+# Unity MCP helper (see python/tools/unity_mcp.py)
+exec "$(dirname "$0")/.venv/bin/python" "$(dirname "$0")/python/tools/unity_mcp.py" "$@"
