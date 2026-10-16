@@ -20,7 +20,7 @@ namespace CommDrone
         LineRenderer trailLine;
         Material lineMat, droneMat, relayMat, baseMat, campMat;
         string recordDir;
-        int frame;
+        int frame, maxFrames = -1, endFrames = -1;
         Vector3 camVel;
         TownMap shownMap;
         GUIStyle style, big;
@@ -32,7 +32,12 @@ namespace CommDrone
             runner = GetComponent<MissionRunner>();
             if (!runner.demo) { enabled = false; return; }
             var a = System.Environment.GetCommandLineArgs();
-            for (int i = 0; i < a.Length - 1; i++) if (a[i] == "-record") recordDir = a[i + 1];
+            for (int i = 0; i < a.Length - 1; i++)
+            {
+                if (a[i] == "-record") recordDir = a[i + 1];
+                if (a[i] == "-maxFrames") int.TryParse(a[i + 1], out maxFrames);
+                if (a[i] == "-demoSpeed") int.TryParse(a[i + 1], out runner.demoSpeed);
+            }
             if (recordDir != null) { Directory.CreateDirectory(recordDir); Time.captureFramerate = 30; }
             mainCam = new GameObject("MainCamera").AddComponent<Camera>();
             mainCam.tag = "MainCamera"; mainCam.fieldOfView = 55; mainCam.farClipPlane = 600;
@@ -114,7 +119,11 @@ namespace CommDrone
             UpdateCamera(d);
             if (d != null && Time.frameCount % 3 == 0) UpdatePip(d);
             if (Time.frameCount % 15 == 0) UpdateMinimap(d);
-            if (recordDir != null) ScreenCapture.CaptureScreenshot(Path.Combine(recordDir, $"f{frame++:D5}.png"));
+            if (recordDir != null) ScreenCapture.CaptureScreenshot(Path.Combine(recordDir, $"f{frame:D5}.png"));
+            frame++;
+            if (maxFrames > 0 && frame >= maxFrames) Application.Quit(0);
+            // after the mission ends, hold the final overview for 6 s, then quit when recording
+            if (runner.status.StartsWith("TARGET") || runner.status.StartsWith("mission failed")) { if (endFrames < 0) endFrames = frame + 180; else if (frame >= endFrames && recordDir != null) Application.Quit(0); }
         }
 
         void SetLink(LineRenderer lr, Vector3 a, Vector3 b, float rssi)
@@ -155,7 +164,7 @@ namespace CommDrone
             {
                 var back = Quaternion.Euler(0, d.fc.yaw, 0) * new Vector3(0, 0, -1f);
                 bool landing = d.mode == MissionMode.Land;
-                target = d.World + back * (landing ? 6f : 14f) + Vector3.up * (landing ? 5f : 16f);
+                target = d.World + back * (landing ? 5f : 10f) + Vector3.up * (landing ? 12f : 28f);
                 look = d.World;
             }
             mainCam.transform.position = Vector3.SmoothDamp(mainCam.transform.position, target, ref camVel, 0.6f);

@@ -31,20 +31,24 @@ def main():
     fp = float((~gt & cn).sum() / max(1, (~gt).sum()))
     tp = gt & cn
     ex, ey = d["cnn_x"][tp] - d["gt_x"][tp], d["cnn_y"][tp] - d["gt_y"][tp]
+    if tp.sum() == 0:  # detector never localises the patch (e.g. the weakened model)
+        ex = ey = np.array([1.0]); tp_empty = True
+    else:
+        tp_empty = False
     bias = float(np.hypot(ex.mean(), ey.mean()))
     sigma = float(np.sqrt(0.5 * (ex.var() + ey.var())))
     # robust sigma (median absolute deviation) to report alongside
     mad = float(1.4826 * np.median(np.abs(np.concatenate([ex - np.median(ex), ey - np.median(ey)]))))
-    area_rel = d["cnn_area"][tp] / np.maximum(d["gt_area"][tp], 1e-3) - 1
+    area_rel = d["cnn_area"][tp] / np.maximum(d["gt_area"][tp], 1e-3) - 1 if not tp_empty else np.array([1.0])
     area_sigma = float(np.clip(np.std(area_rel), 0, 1))
     alt = d["alt"]
     # localisation error in metres (offset x half-extent)
-    he = alt[tp] * np.tan(np.radians(30))
+    he = alt[tp] * np.tan(np.radians(30)) if not tp_empty else np.array([np.nan])
     err_m = np.hypot(ex, ey) * he
 
     noise = {"confusion": [float(x) for x in P.flatten()], "fnRate": fn, "fpRate": fp,
              "locSigma": min(sigma, 0.5), "locBias": bias, "areaSigma": area_sigma,
-             "dropRate": 0.02, "confNoise": float(np.clip(1 - d["cnn_conf"][tp].mean(), 0.05, 0.5)),
+             "dropRate": 0.02, "confNoise": float(np.clip(1 - d["cnn_conf"][tp].mean(), 0.05, 0.5)) if not tp_empty else 0.5,
              "source": f"measured: {a.name} test set + locator calibration ({len(d)} frames)"}
     os.makedirs(os.path.dirname(a.out_json), exist_ok=True)
     json.dump(noise, open(a.out_json, "w"), indent=1)
