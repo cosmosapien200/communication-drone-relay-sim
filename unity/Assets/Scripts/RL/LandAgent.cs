@@ -25,6 +25,8 @@ namespace CommDrone
         public WindModel Wind { get; private set; }
         public GroundFeature Patch { get; private set; }
         public ISpotDetector detector;
+        /// Training reads noise rates from ML-Agents environment parameters; evaluation fixes them.
+        public bool noiseFromEnv = true;
         public SpotDetection LastDet { get; private set; }
         public int FramesSinceDetection { get; private set; }
         public int StepsInEpisode { get; private set; }
@@ -64,8 +66,6 @@ namespace CommDrone
         public override void OnEpisodeBegin()
         {
             FC.mode = flightMode;
-            if (detector is VisionNoiseModel vnm) vnm.p = ReadNoiseParams();
-            detector.ResetEpisode();
             Vector3 start; float yaw;
             if (episodeProvider != null)
             {
@@ -80,6 +80,8 @@ namespace CommDrone
                 start = new Vector3(Mathf.Cos(ang) * rad, R(3f, 6f), Mathf.Sin(ang) * rad);
                 yaw = R(0, 360);
             }
+            if (noiseFromEnv && detector is VisionNoiseModel vnm) vnm.p = ReadNoiseParams();
+            detector.ResetEpisode();
             FC.Reset(start, yaw);
             float gust = gustOverride >= 0 ? gustOverride : Env("gust", 0f);
             float mean = meanWindOverride >= 0 ? meanWindOverride : Env("wind_mean", 0f);

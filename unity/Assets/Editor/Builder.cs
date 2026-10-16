@@ -15,6 +15,15 @@ namespace CommDrone.EditorTools
         public static void BuildNav() => BuildTraining(TrainingManager.Kind.Nav, "NavTraining");
         public static void BuildLand() => BuildTraining(TrainingManager.Kind.Land, "LandTraining");
 
+        public static void BuildEval()
+        {
+            string scenePath = "Assets/Scenes/Eval.unity";
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            new GameObject("EvalRunner").AddComponent<EvalRunner>();
+            EditorSceneManager.SaveScene(scene, scenePath);
+            Build(new[] { scenePath }, "Eval");
+        }
+
         public static void BuildTraining(TrainingManager.Kind kind, string name)
         {
             string scenePath = $"Assets/Scenes/{name}.unity";

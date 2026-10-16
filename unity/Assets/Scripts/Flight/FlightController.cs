@@ -15,6 +15,7 @@ namespace CommDrone
         public bool InGust { get; private set; }
 
         public WindModel(int seed) { rng = new System.Random(seed); }
+        public void Reseed(int seed) { rng = new System.Random(seed); }
 
         /// meanMax: max mean speed (m/s); gustMax: max gust amplitude (m/s).
         public void Randomize(float meanMax, float gustMax)

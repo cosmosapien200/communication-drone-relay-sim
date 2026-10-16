@@ -70,7 +70,7 @@ namespace CommDrone
                 // reuse a map for a few episodes to amortise generation; new map otherwise
                 if (Map == null || mapUses >= 4 || Mathf.RoundToInt(Map.curriculum.level) != Mathf.RoundToInt(cp.level))
                 {
-                    Map = MapGenerator.Generate(rng.Next(), cp, withFeatures: false);
+                    Map = MapGenerator.Generate(TrainSeed(), cp, withFeatures: false);
                     mapUses = 0;
                 }
                 mapUses++;
@@ -104,15 +104,20 @@ namespace CommDrone
                         return;
                     }
                 }
-                if (attempt > 20) { Map = MapGenerator.Generate(rng.Next(), cp, false); attempt = 0; }
+                if (attempt > 20) { Map = MapGenerator.Generate(TrainSeed(), cp, false); attempt = 0; }
             }
         }
 
-        Vector2 RandomClearPoint(float clearance)
+        /// Training map seeds are even; held-out evaluation seeds are odd (never seen in training).
+        int TrainSeed() => rng.Next() & ~1;
+
+        public Vector2 RandomClearPoint(float clearance) => RandomClearPoint(clearance, rng);
+
+        public Vector2 RandomClearPoint(float clearance, System.Random r)
         {
             for (int t = 0; t < 10000; t++)
             {
-                var p = new Vector2((float)rng.NextDouble() * Map.W, (float)rng.NextDouble() * Map.H) * Map.cellSize;
+                var p = new Vector2((float)r.NextDouble() * Map.W, (float)r.NextDouble() * Map.H) * Map.cellSize;
                 if (!Map.Collides(p, clearance)) return p;
             }
             return Map.BasePos;
@@ -171,8 +176,7 @@ namespace CommDrone
             for (int s = 0; s < sub; s++)
             {
                 FC.Step(Sim.PhysicsDt, Wind.Step(FC.time));
-                FC.position.y = Sim.CruiseAltitude; // altitude hold at cruise (2.5D flight)
-                FC.velocity.y = 0f;
+                if (FC.mode == FlightMode.Fast) { FC.position.y = Sim.CruiseAltitude; FC.velocity.y = 0f; } // 2.5D altitude hold
                 if (Map.Collides(Pos2, Sim.DroneRadius)) { collided = true; break; }
             }
             TravelledDist += (Pos2 - before).magnitude;

@@ -32,7 +32,8 @@ namespace CommDrone
             for (int i = 0; i < arenas; i++) agents.Add(Spawn(kind, i, transform, fixedLevel));
         }
 
-        public static Agent Spawn(Kind kind, int index, Transform parent, float fixedLevel = 0f, FlightMode mode = FlightMode.Fast)
+        public static Agent Spawn(Kind kind, int index, Transform parent, float fixedLevel = 0f, FlightMode mode = FlightMode.Fast,
+            Unity.InferenceEngine.ModelAsset model = null, BehaviorType behaviorType = BehaviorType.Default)
         {
             var go = new GameObject($"{kind}Agent_{index}");
             go.SetActive(false);
@@ -42,6 +43,9 @@ namespace CommDrone
             bp.BrainParameters.VectorObservationSize = kind == Kind.Nav ? NavAgent.ObsSize : LandAgent.ObsSize;
             bp.BrainParameters.NumStackedVectorObservations = 1;
             bp.BrainParameters.ActionSpec = ActionSpec.MakeContinuous(3);
+            bp.Model = model;
+            bp.BehaviorType = behaviorType;
+            bp.InferenceDevice = InferenceDevice.Burst;
             Agent agent;
             if (kind == Kind.Nav)
             {

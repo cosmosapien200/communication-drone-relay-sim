@@ -19,7 +19,8 @@ namespace CommDrone
         public PathField(TownMap map, Vector2Int goal, System.Func<int, int, bool> blocked = null)
         {
             this.map = map; this.goal = goal;
-            blocked ??= map.Blocked;
+            if (blocked == null) blocked = map.Blocked;
+            else { var user = blocked; blocked = (i, j) => !map.InBounds(i, j) || user(i, j); }
             int n = map.W * map.H;
             dist = new float[n];
             for (int k = 0; k < n; k++) dist[k] = Unreachable;
