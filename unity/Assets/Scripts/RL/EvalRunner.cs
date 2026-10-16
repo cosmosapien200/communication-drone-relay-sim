@@ -140,9 +140,7 @@ namespace CommDrone
                 float ang = R(0, 2 * Mathf.PI), rad = R(0f, 2.0f);
                 var start = new Vector3(Mathf.Cos(ang) * rad, R(3f, 6f), Mathf.Sin(ang) * rad);
                 ag.Wind.Reseed(seed);
-                var np = new VisionNoiseParams();
-                np.fnRate = Mathf.Clamp01(np.fnRate * noiseScale); np.fpRate = Mathf.Clamp01(np.fpRate * noiseScale);
-                np.locSigma *= noiseScale; np.locBias *= noiseScale; np.dropRate = Mathf.Clamp01(np.dropRate * noiseScale);
+                var np = VisionCalibration.Scaled(VisionCalibration.LoadNoise().spot, noiseScale); // measured detector noise
                 ag.noiseFromEnv = false;
                 ag.detector = new VisionNoiseModel(np, seed);
                 return (patch, start, R(0, 360));

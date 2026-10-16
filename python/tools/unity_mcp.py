@@ -130,7 +130,12 @@ def main():
         elif cmd == "exec":
             c.wait_idle()
             meth = sys.argv[2]
-            args = ", ".join(json.dumps(a) for a in sys.argv[3:])
+            def lit(a):
+                try:
+                    float(a); return a + ("f" if "." in a else "")  # numeric literal (int, or float with f suffix)
+                except ValueError:
+                    return a if a in ("true", "false") else json.dumps(a)
+            args = ", ".join(lit(a) for a in sys.argv[3:])
             r = c.run_body(f"{meth}({args}); result.Log(\"exec ok\");", 3600)
             print(summarize(r))
         elif cmd == "cs":

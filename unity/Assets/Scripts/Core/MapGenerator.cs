@@ -236,8 +236,48 @@ namespace CommDrone
             int nFake = Mathf.RoundToInt(cp.lookAlikes * areaScale);
             var landTypes = new[] { GroundType.Plaza, GroundType.IntactRoad, GroundType.FlatConcrete };
             var fakeTypes = new[] { GroundType.Debris, GroundType.Puddle, GroundType.Hole, GroundType.Vehicle, GroundType.Slope };
-            Place(nLand, landTypes, 1.8f, 5f);
+            // intact-road strips: street-aligned landable stretches (the street surface survived)
+            int nRoads = Mathf.RoundToInt(cp.intactRoads * areaScale);
+            for (int placed = 0, attempt = 0; placed < nRoads && attempt < nRoads * 60; attempt++)
+            {
+                int i = rng.Next(2, m.W - 2), j = rng.Next(2, m.H - 2);
+                if (m.Blocked(i, j)) continue;
+                int rx = Run(m, i, j, 1, 0), ry = Run(m, i, j, 0, 1);
+                bool alongX = rx > ry;
+                int across = alongX ? ry : rx;
+                if (across < 3 || across > 9) continue; // a plain street, not a plaza
+                // centre the strip across the street
+                int lo = 0; while (!m.Blocked(alongX ? i : i - lo - 1, alongX ? j - lo - 1 : j) && lo < 10) lo++;
+                float centreAcross = (alongX ? j : i) - lo + across * 0.5f;
+                float len = Lerp(6f, 15f), wid = Mathf.Max(1.8f, across - 1.2f);
+                var c = alongX ? new Vector2(i + 0.5f, centreAcross) : new Vector2(centreAcross, j + 0.5f);
+                var f = new GroundFeature { type = GroundType.IntactRoad, center = c, size = alongX ? new Vector2(len, wid) : new Vector2(wid, len) };
+                if ((c - m.BasePos).magnitude < 4f || (c - m.TargetPos).magnitude < 4f || !Fits(m, f)) continue;
+                m.features.Add(f); placed++;
+            }
+            // half of the landable patches sit at street intersections (crossroads, wide junctions), the rest anywhere
+            var junctions = new List<Vector2>();
+            for (int j = 2; j < m.H - 2; j += 2)
+                for (int i = 2; i < m.W - 2; i += 2)
+                    if (!m.Blocked(i, j) && Run(m, i, j, 1, 0) >= 12 && Run(m, i, j, 0, 1) >= 12) junctions.Add(m.CellCenter(i, j));
+            PlaceAt(nLand / 2, landTypes, 1.8f, 5f, junctions);
+            Place(nLand - nLand / 2, landTypes, 1.8f, 5f);
             Place(nFake, fakeTypes, 1.5f, 4.5f);
+
+            void PlaceAt(int count, GroundType[] types, float smin, float smax, List<Vector2> sites)
+            {
+                if (sites.Count == 0) { Place(count, types, smin, smax); return; }
+                for (int placed = 0, attempt = 0; placed < count && attempt < count * 40; attempt++)
+                {
+                    var t = types[rng.Next(types.Length)];
+                    var size = new Vector2(Lerp(smin, smax), Lerp(smin, smax));
+                    var c = sites[rng.Next(sites.Count)] + new Vector2(Lerp(-2f, 2f), Lerp(-2f, 2f));
+                    if ((c - m.BasePos).magnitude < 4f || (c - m.TargetPos).magnitude < 4f) continue;
+                    var f = new GroundFeature { type = t, center = c, size = size, rotation = 0 };
+                    if (!Fits(m, f)) continue;
+                    m.features.Add(f); placed++;
+                }
+            }
 
             void Place(int count, GroundType[] types, float smin, float smax)
             {

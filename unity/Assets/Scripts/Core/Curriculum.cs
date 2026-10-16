@@ -13,6 +13,7 @@ namespace CommDrone
         public float collapseProb;     // fraction of buildings collapsed into the street
         public int landablePatches;    // per 100x100 m
         public int lookAlikes;         // per 100x100 m
+        public int intactRoads;        // intact-road strips along streets per 100x100 m (landable)
         public bool lineOfSight;       // base and target on one straight street
         public float navMinDist, navMaxDist; // nav training start-to-waypoint path distance (m)
         public float windMean, windGust;     // m/s
@@ -25,16 +26,16 @@ namespace CommDrone
             switch (l)
             {
                 case 1:
-                    p.mapSize = 96; p.rubbleDensity = 0f; p.collapseProb = 0f; p.landablePatches = 40; p.lookAlikes = 30;
+                    p.mapSize = 110; p.rubbleDensity = 0f; p.collapseProb = 0f; p.landablePatches = 40; p.lookAlikes = 30; p.intactRoads = 36;
                     p.lineOfSight = true; p.navMinDist = 4; p.navMaxDist = 15; p.windMean = 0; p.windGust = 0; break;
                 case 2:
-                    p.mapSize = 96; p.rubbleDensity = 0.08f; p.collapseProb = 0.05f; p.landablePatches = 35; p.lookAlikes = 40;
+                    p.mapSize = 96; p.rubbleDensity = 0.08f; p.collapseProb = 0.05f; p.landablePatches = 35; p.lookAlikes = 40; p.intactRoads = 30;
                     p.lineOfSight = false; p.navMinDist = 8; p.navMaxDist = 30; p.windMean = 0.3f; p.windGust = 0.3f; break;
                 case 3:
-                    p.mapSize = 110; p.rubbleDensity = 0.16f; p.collapseProb = 0.10f; p.landablePatches = 25; p.lookAlikes = 50;
+                    p.mapSize = 110; p.rubbleDensity = 0.16f; p.collapseProb = 0.10f; p.landablePatches = 25; p.lookAlikes = 50; p.intactRoads = 24;
                     p.lineOfSight = false; p.navMinDist = 15; p.navMaxDist = 50; p.windMean = 0.6f; p.windGust = 0.8f; break;
                 default:
-                    p.mapSize = 120; p.rubbleDensity = 0.25f; p.collapseProb = 0.15f; p.landablePatches = 14; p.lookAlikes = 60;
+                    p.mapSize = 120; p.rubbleDensity = 0.25f; p.collapseProb = 0.15f; p.landablePatches = 14; p.lookAlikes = 60; p.intactRoads = 16;
                     p.lineOfSight = false; p.navMinDist = 20; p.navMaxDist = 80; p.windMean = 1.0f; p.windGust = 1.5f; break;
             }
             return p;

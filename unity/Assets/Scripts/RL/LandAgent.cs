@@ -106,17 +106,26 @@ namespace CommDrone
 
         public override void CollectObservations(VectorSensor sensor)
         {
-            sensor.AddObservation(Mathf.Clamp(held.offset.x, -2f, 2f));
-            sensor.AddObservation(Mathf.Clamp(held.offset.y, -2f, 2f));
-            sensor.AddObservation(held.area);
-            sensor.AddObservation(held.confidence);
-            sensor.AddObservation(Mathf.Clamp01(held.clearance / 3f));
-            sensor.AddObservation(Mathf.Clamp01(FC.position.y / 8f));
-            var bv = FC.BodyVelocity;
-            sensor.AddObservation(bv.z / MaxHSpeed);
-            sensor.AddObservation(bv.x / MaxHSpeed);
-            sensor.AddObservation(bv.y / Sim.MaxVerticalSpeed);
-            sensor.AddObservation(Mathf.Clamp01(FramesSinceDetection / 10f));
+            WriteObs(obsBuf, held, FC, FramesSinceDetection);
+            sensor.AddObservation(obsBuf);
+        }
+
+        readonly float[] obsBuf = new float[ObsSize];
+
+        /// Observation vector shared by training and the mission runner.
+        public static void WriteObs(float[] o, SpotDetection held, FlightController fc, int framesSinceDetection)
+        {
+            o[0] = Mathf.Clamp(held.offset.x, -2f, 2f);
+            o[1] = Mathf.Clamp(held.offset.y, -2f, 2f);
+            o[2] = held.area;
+            o[3] = held.confidence;
+            o[4] = Mathf.Clamp01(held.clearance / 3f);
+            o[5] = Mathf.Clamp01(fc.position.y / 8f);
+            var bv = fc.BodyVelocity;
+            o[6] = bv.z / MaxHSpeed;
+            o[7] = bv.x / MaxHSpeed;
+            o[8] = bv.y / Sim.MaxVerticalSpeed;
+            o[9] = Mathf.Clamp01(framesSinceDetection / 10f);
         }
 
         public override void OnActionReceived(ActionBuffers actions)

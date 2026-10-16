@@ -127,13 +127,7 @@ namespace CommDrone
 
         public float[] CastRays()
         {
-            var p = Pos2;
-            for (int k = 0; k < NumRays; k++)
-            {
-                float a = (FC.yaw + k * 360f / NumRays) * Mathf.Deg2Rad;
-                // Unity yaw: forward = (sin a, cos a) in (x, z)
-                rays[k] = Map.Raycast(p, new Vector2(Mathf.Sin(a), Mathf.Cos(a)), RayRange);
-            }
+            CastRays(Map, Pos2, FC.yaw, rays);
             return rays;
         }
 
@@ -147,17 +141,38 @@ namespace CommDrone
 
         public override void CollectObservations(VectorSensor sensor)
         {
-            var wb = WaypointBody();
-            sensor.AddObservation(Mathf.Log(1f + wb.x) / Mathf.Log(101f));
-            sensor.AddObservation(wb.y / 180f);
-            var bv = FC.BodyVelocity;
-            sensor.AddObservation(bv.z / Sim.MaxHorizontalSpeed);
-            sensor.AddObservation(bv.x / Sim.MaxHorizontalSpeed);
-            sensor.AddObservation(Mathf.Sin(FC.yaw * Mathf.Deg2Rad));
-            sensor.AddObservation(Mathf.Cos(FC.yaw * Mathf.Deg2Rad));
-            CastRays();
-            for (int k = 0; k < NumRays; k++) sensor.AddObservation(rays[k] / RayRange);
-            sensor.AddObservation(prevAction);
+            WriteObs(obsBuf, Map, FC, Waypoint, prevAction, rays);
+            sensor.AddObservation(obsBuf);
+        }
+
+        readonly float[] obsBuf = new float[ObsSize];
+
+        /// Observation vector shared by training and the mission runner (keeps them identical).
+        public static void WriteObs(float[] o, TownMap map, FlightController fc, Vector2 waypoint, Vector3 prevAction, float[] rayBuf)
+        {
+            var pos = new Vector2(fc.position.x, fc.position.z);
+            var d = waypoint - pos;
+            float bearing = Mathf.DeltaAngle(fc.yaw, Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg);
+            int k = 0;
+            o[k++] = Mathf.Log(1f + d.magnitude) / Mathf.Log(101f);
+            o[k++] = bearing / 180f;
+            var bv = fc.BodyVelocity;
+            o[k++] = bv.z / Sim.MaxHorizontalSpeed;
+            o[k++] = bv.x / Sim.MaxHorizontalSpeed;
+            o[k++] = Mathf.Sin(fc.yaw * Mathf.Deg2Rad);
+            o[k++] = Mathf.Cos(fc.yaw * Mathf.Deg2Rad);
+            CastRays(map, pos, fc.yaw, rayBuf);
+            for (int r = 0; r < NumRays; r++) o[k++] = rayBuf[r] / RayRange;
+            o[k++] = prevAction.x; o[k++] = prevAction.y; o[k++] = prevAction.z;
+        }
+
+        public static void CastRays(TownMap map, Vector2 p, float yaw, float[] rayBuf)
+        {
+            for (int r = 0; r < NumRays; r++)
+            {
+                float a = (yaw + r * 360f / NumRays) * Mathf.Deg2Rad;
+                rayBuf[r] = map.Raycast(p, new Vector2(Mathf.Sin(a), Mathf.Cos(a)), RayRange);
+            }
         }
 
         public override void OnActionReceived(ActionBuffers actions)

@@ -11,10 +11,10 @@ namespace CommDrone
     {
         public float P0 = -40f;          // dBm at d0
         public float d0 = 1f;            // m
-        public float n = 2.1f;           // path-loss exponent (urban LOS-dominated streets)
-        public float lossConcrete = 12f; // dB per wall
-        public float lossBrick = 8f;
-        public float lossRubble = 6f;
+        public float n = 2.0f;           // path-loss exponent (street-canyon LOS: measured ~1.6-2.0)
+        public float lossConcrete = 10f; // dB per wall
+        public float lossBrick = 7f;
+        public float lossRubble = 5f;
         public float groundPenalty = 3f; // dB extra when B rests on the ground
         public float sigma = 2f;         // shadowing std (dB), 0 disables
         public float tLink = -80f;       // minimum usable link RSSI

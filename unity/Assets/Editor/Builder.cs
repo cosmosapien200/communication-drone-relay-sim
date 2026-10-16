@@ -24,6 +24,17 @@ namespace CommDrone.EditorTools
             Build(new[] { scenePath }, "Eval");
         }
 
+        public static void BuildMission()
+        {
+            string scenePath = "Assets/Scenes/Mission.unity";
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var go = new GameObject("MissionRunner");
+            go.AddComponent<MissionRunner>();
+            go.AddComponent<MissionView>();
+            EditorSceneManager.SaveScene(scene, scenePath);
+            Build(new[] { scenePath }, "Mission");
+        }
+
         public static void BuildTraining(TrainingManager.Kind kind, string name)
         {
             string scenePath = $"Assets/Scenes/{name}.unity";

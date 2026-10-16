@@ -14,14 +14,27 @@ namespace CommDrone
         public readonly byte[] argmax = new byte[Res * Res];
         public readonly float[] conf = new float[Res * Res];
 
-        public SegModel(ModelAsset asset, BackendType backend = BackendType.GPUCompute)
+        public SegModel(ModelAsset asset, BackendType backend = BackendType.CPU) // GPUCompute returned constant outputs in the Linux editor
         {
             worker = new Worker(ModelLoader.Load(asset), backend);
             input = new Tensor<float>(new TensorShape(1, 3, Res, Res));
         }
 
+        Texture2D staging;
+
         public void Run(Texture frame)
         {
+            if (frame is RenderTexture rtex)
+            {
+                // feed render targets through a CPU staging texture (direct RT conversion gave empty input in edit mode)
+                staging ??= new Texture2D(Res, Res, TextureFormat.RGB24, false);
+                var prev = RenderTexture.active;
+                RenderTexture.active = rtex;
+                staging.ReadPixels(new Rect(0, 0, Res, Res), 0, 0);
+                staging.Apply();
+                RenderTexture.active = prev;
+                frame = staging;
+            }
             TextureConverter.ToTensor(frame, input, new TextureTransform().SetCoordOrigin(CoordOrigin.TopLeft).SetDimensions(Res, Res, 3));
             worker.Schedule(input);
             using var o = (worker.PeekOutput() as Tensor<float>).ReadbackAndClone();
@@ -36,6 +49,6 @@ namespace CommDrone
             }
         }
 
-        public void Dispose() { worker?.Dispose(); input?.Dispose(); }
+        public void Dispose() { worker?.Dispose(); input?.Dispose(); if (staging) Object.DestroyImmediate(staging); }
     }
 }
