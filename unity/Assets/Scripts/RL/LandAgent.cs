@@ -43,6 +43,7 @@ namespace CommDrone
         System.Random rng;
         Vector3 prevAction;
         SpotDetection held;
+        float prevPhi;
 
         public override void Initialize()
         {
@@ -90,6 +91,7 @@ namespace CommDrone
             StepsInEpisode = 0; FramesSinceDetection = 0; prevAction = Vector3.zero;
             held = detector.Detect(FC.position, FC.yaw, Patch);
             LastDet = held;
+            prevPhi = -0.1f * (FC.position.y + 2f * (new Vector2(FC.position.x, FC.position.z) - Patch.center).magnitude);
         }
 
         float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
@@ -145,6 +147,10 @@ namespace CommDrone
             float allowed = 0.3f + 0.35f * alt;
             float vDown = Mathf.Max(0f, -FC.velocity.y);
             float r = -0.01f * offset - 0.05f * Mathf.Max(0f, vDown - allowed) - 0.002f - 0.002f * (a - prevAction).sqrMagnitude;
+            // potential-based shaping (v2): Phi = -0.1 (alt + 2 offset); rewards descending while centred
+            float phi = -0.1f * (alt + 2f * offset);
+            r += phi - prevPhi;
+            prevPhi = phi;
             prevAction = a;
             AddReward(r);
 
@@ -164,7 +170,7 @@ namespace CommDrone
             }
             else if (FramesSinceDetection > LostLimit) { AddReward(-1f); Finish("lost"); }
             else if (alt > 9f || offset > 8f) { AddReward(-1f); Finish("fly_away"); }
-            else if (StepsInEpisode >= maxSteps) { AddReward(-0.5f); Finish("timeout"); }
+            else if (StepsInEpisode >= maxSteps) { AddReward(-1f); Finish("timeout"); }
         }
 
         void Finish(string outcome)

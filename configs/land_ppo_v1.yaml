@@ -1,5 +1,5 @@
 # Run: land_ppo_v1 — landing PPO (SPEC Section 9, phase L1 with placeholder noise model)
-# Gust curriculum 0 -> 1 -> 2 -> 3 m/s. Noise: VisionNoiseParams defaults (placeholder until the detector is measured).
+# Gust curriculum 0 -> 1.5 -> 3 -> 4.5 m/s (fast-mode gust gain 0.33, matched to the full quadrotor). Noise: VisionNoiseParams defaults (placeholder until the detector is measured).
 # Reward: -0.01*offset -0.05*excess descent speed -0.002/step; success +1 + centring bonus; failure -1.
 behaviors:
   Land:
@@ -34,12 +34,12 @@ environment_parameters:
         value: 0.0
       - name: Gust1
         completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 2000, threshold: 1.2}
-        value: 1.0
+        value: 1.5
       - name: Gust2
         completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 3000, threshold: 1.1}
-        value: 2.0
-      - name: Gust3
         value: 3.0
+      - name: Gust3
+        value: 4.5
   wind_mean:
     curriculum:
       - name: Calm

@@ -8,4 +8,4 @@ shift 6 2>/dev/null || shift $#
 mkdir -p results/runs
 export CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=${OMP_NUM_THREADS:-4} MKL_NUM_THREADS=${OMP_NUM_THREADS:-4}
 exec nice -n 5 .venv/bin/mlagents-learn "$CFG" --env "Builds/$BUILD/$BUILD.x86_64" --no-graphics \
-  --num-envs "$NENV" --run-id "$RUN" --results-dir results/runs --seed "$SEED" --env-args -arenas "$ARENAS" "$@"
+  --num-envs "$NENV" --run-id "$RUN" --results-dir results/runs --seed "$SEED" "$@" --env-args -arenas "$ARENAS"

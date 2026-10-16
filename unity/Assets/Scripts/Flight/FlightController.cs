@@ -76,13 +76,13 @@ namespace CommDrone
         Vector3 cmdBody; float cmdYawRate;
 
         // ---- fast-mode parameters (tuned to the full mode's measured step response; see docs/flight.md)
-        public float tauH = 0.30f, tauV = 0.25f, tauYaw = 0.15f;   // first-order lag (s)
+        public float tauH = 0.26f, tauV = 0.21f, tauYaw = 0.19f;   // first-order lag (s)
         public float accelLimitH = 4.0f, accelLimitV = 3.0f;         // m/s^2
         public float tauWindReject = 1.2f;                           // velocity-loop integrator rejection time (s)
         Vector3 windLP;
 
         // ---- full-mode quadrotor parameters
-        public float mass = 1.2f, arm = 0.2f, maxRotorThrust = 7.0f, motorTau = 0.03f, km = 0.016f, dragCoef = 0.35f;
+        public float mass = 1.2f, arm = 0.2f, maxRotorThrust = 7.0f, motorTau = 0.03f, km = 0.016f, dragCoef = 0.8f;
         public Vector3 inertia = new Vector3(0.012f, 0.020f, 0.012f); // body x (pitch), y (yaw), z (roll)
         public float kpVelH = 2.4f, kiVelH = 0.9f, kdVelH = 0.05f, kpVelV = 4.0f, kiVelV = 1.5f;
         public float kpAtt = 7.0f, kpRate = 18.0f, kpYawRate = 4.0f;
@@ -135,7 +135,7 @@ namespace CommDrone
         }
 
         // ---------------- fast mode: first-order velocity tracking + accel limits + wind disturbance
-        public float windGainFast = 0.6f; // fraction of the unrejected (high-pass) wind that moves the drone
+        public float windGainFast = 0.33f; // fraction of the unrejected (high-pass) wind that moves the drone
         Vector3 vCtrl;                     // controller-tracked velocity component
 
         void StepFast(float dt, Vector3 wind)
@@ -196,12 +196,14 @@ namespace CommDrone
             Vector3 cmdW = Quaternion.Euler(0, yawSet, 0) * cmdBody;
             Vector3 err = cmdW - velocity;
             bool grounded = onGround && cmdW.y <= 0f;
-            if (!grounded) velInt += err * dt;
+            // anti-windup: integrate only near the setpoint (the integrator is for wind/drag bias, not transients)
+            if (!grounded) velInt += new Vector3(Mathf.Abs(err.x) < 0.4f ? err.x : 0f, Mathf.Abs(err.y) < 0.3f ? err.y : 0f, Mathf.Abs(err.z) < 0.4f ? err.z : 0f) * dt;
             velInt = Vector3.ClampMagnitude(velInt, 4f);
             Vector3 dErr = (err - prevVelErr) / dt; prevVelErr = err;
             Vector3 aDes = new Vector3(kpVelH * err.x + kiVelH * velInt.x + kdVelH * dErr.x,
                                        kpVelV * err.y + kiVelV * velInt.y,
                                        kpVelH * err.z + kiVelH * velInt.z + kdVelH * dErr.z);
+            aDes += dragCoef / mass * cmdW; // drag feedforward (still-air assumption)
             var aH = new Vector2(aDes.x, aDes.z);
             if (aH.magnitude > maxAccelH) aH = aH.normalized * maxAccelH;
             aDes = new Vector3(aH.x, Mathf.Clamp(aDes.y, -6f, 8f), aH.y);
