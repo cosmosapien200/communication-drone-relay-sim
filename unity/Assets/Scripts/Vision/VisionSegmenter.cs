@@ -55,6 +55,22 @@ namespace CommDrone
         public int stride = 2;          // pixel subsampling for projection
         public float maxRange = 25f;    // ignore far-away ground (low resolution)
 
+        public static string FrameDump; int dumped, frameCounter;
+        void Dump()
+        {
+            System.IO.Directory.CreateDirectory(FrameDump);
+            int R = SegModel.Res;
+            var t = new Texture2D(R, R, TextureFormat.RGB24, false);
+            var prev = RenderTexture.active; RenderTexture.active = rt; t.ReadPixels(new Rect(0, 0, R, R), 0, 0); t.Apply(); RenderTexture.active = prev;
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(FrameDump, $"v{dumped}_rgb.png"), t.EncodeToPNG());
+            Color32[] pal = { new Color32(0, 0, 0, 255), new Color32(0, 255, 0, 255), new Color32(255, 0, 0, 255), new Color32(0, 0, 255, 255) };
+            var px = new Color32[R * R];
+            for (int v = 0; v < R; v++) for (int u = 0; u < R; u++) px[(R - 1 - v) * R + u] = pal[model.argmax[v * R + u]];
+            t.SetPixels32(px); t.Apply();
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(FrameDump, $"v{dumped}_mask.png"), t.EncodeToPNG());
+            Object.Destroy(t); dumped++;
+        }
+
         public VisionSegmenter(SegModel model, Camera cam)
         {
             this.model = model; this.cam = cam;
@@ -70,6 +86,7 @@ namespace CommDrone
             cam.Render();
             cam.targetTexture = prev;
             model.Run(rt);
+            if (FrameDump != null && dumped < 12 && (frameCounter++ % 10) == 0) Dump();
             return Project(map, camPosWorld, camRot, fovDeg, model.argmax, model.conf, stride, maxRange);
         }
 

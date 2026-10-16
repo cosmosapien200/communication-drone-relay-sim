@@ -2,6 +2,26 @@
 
 Updated at every major milestone. Newest first.
 
+## 2026-10-17 02:55 — Evaluations, mission planner, world fixes
+- **Nav eval** (held-out odd seeds, 100 eps/level): PPO 98/98/93/80 % (L1–L4) vs potential field 93/92/78/54 %,
+  straight line 84/64/39/18 %, A*+reactive 100/100/99/94 %. Full-quadrotor transfer L4: 74 %. `docs/results/nav_v1/`.
+- **Landing eval** (measured detector noise, 100 eps): RL v3 100 % at gusts 0–6 m/s (error 1–5 cm) vs PID 97→44 %;
+  2× noise: RL 100 %, PID 0 %; full quadrotor @3 m/s: RL 96 % (3 % hard impacts) vs PID 33 %. `docs/results/land/`.
+- **Vision v1**: U-Net test mIoU 0.891 (landable IoU 0.728). Unity-side check: 95.8 % pixel acc (orientation verified).
+  GPUCompute backend returned constant output in the Linux editor → CPU backend (0.5 M params, fast enough).
+  Locator (measured in Unity on held-out maps): FN 7 %, FP 42 % (out-of-view), median centre error 0.33 m.
+- **Landing v3**: fine-tuned from v2 with the *measured* noise (σ 5×, FP 20× the placeholder).
+- **Mission stack**: SharedMap, DroneMission state machine (Download→Transit→Explore→Navigate→Land→Upload), frontier
+  rule (RSSI ≥ T_link+M, min path distance to target), spot rule (RSSI ≥ T_link+M+G, min path distance, + 5 m progress),
+  MissionRunner (headless eval / demo), MissionView (HUD, minimap, PiP + segmentation, RSSI-coloured links).
+- **Debugging the mission** (all with ground-truth vision first): SharedMap.Clone shared the node list (fixed);
+  spots were component centroids (now per-cell, footprint check); failure dumps showed the base's LOS corridor rarely
+  contained a landable spot → added street-aligned *intact-road* strips (landable per spec), n = 2.0 (street canyon),
+  wall loss 10/7/5 dB, panning gimbal while exploring. GT missions: L2 44 % / L3 14 % / L4 4 % success, +68/+50/+29 m.
+- **Demo level** hand-built (Z-route, ~4 relays): 2/3 GT runs form the 4-relay chain and cover the camp.
+- In progress: vision v2 (dataset regenerated with intact roads; landable pixels 5.7 % → 16.6 %), weakened detector,
+  nav_ppo_v2 fine-tune on final flight parameters.
+
 ## 2026-10-17 01:57 — WP1–WP3 done, first RL runs, vision dataset
 - **WP1 map generator** (`Scripts/Core/MapGenerator.cs`): seeded street grid, irregular blocks/alleys, collapsed
   buildings, rubble barriers keeping base→target connected, landable patches + 5 look-alike types. 1–20 ms/map.

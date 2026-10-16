@@ -1,5 +1,6 @@
 using System.IO;
 using UnityEditor;
+using UnityEngine.Rendering;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -72,6 +73,26 @@ namespace CommDrone.EditorTools
             PlayerSettings.resizableWindow = true;
             PlayerSettings.usePlayerLog = true;
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+            IncludeShaders("Standard", "Unlit/Color", "Unlit/Texture", "Sprites/Default");
+        }
+
+        /// Shaders created at runtime via Shader.Find must be in GraphicsSettings' Always Included Shaders.
+        static void IncludeShaders(params string[] names)
+        {
+            var gs = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.GraphicsSettings>("ProjectSettings/GraphicsSettings.asset");
+            var so = new SerializedObject(gs);
+            var arr = so.FindProperty("m_AlwaysIncludedShaders");
+            foreach (var n in names)
+            {
+                var sh = Shader.Find(n);
+                if (sh == null) continue;
+                bool has = false;
+                for (int i = 0; i < arr.arraySize; i++) if (arr.GetArrayElementAtIndex(i).objectReferenceValue == sh) has = true;
+                if (has) continue;
+                arr.InsertArrayElementAtIndex(arr.arraySize);
+                arr.GetArrayElementAtIndex(arr.arraySize - 1).objectReferenceValue = sh;
+            }
+            so.ApplyModifiedProperties();
         }
     }
 }

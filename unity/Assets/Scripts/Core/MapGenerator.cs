@@ -236,25 +236,7 @@ namespace CommDrone
             int nFake = Mathf.RoundToInt(cp.lookAlikes * areaScale);
             var landTypes = new[] { GroundType.Plaza, GroundType.IntactRoad, GroundType.FlatConcrete };
             var fakeTypes = new[] { GroundType.Debris, GroundType.Puddle, GroundType.Hole, GroundType.Vehicle, GroundType.Slope };
-            // intact-road strips: street-aligned landable stretches (the street surface survived)
-            int nRoads = Mathf.RoundToInt(cp.intactRoads * areaScale);
-            for (int placed = 0, attempt = 0; placed < nRoads && attempt < nRoads * 60; attempt++)
-            {
-                int i = rng.Next(2, m.W - 2), j = rng.Next(2, m.H - 2);
-                if (m.Blocked(i, j)) continue;
-                int rx = Run(m, i, j, 1, 0), ry = Run(m, i, j, 0, 1);
-                bool alongX = rx > ry;
-                int across = alongX ? ry : rx;
-                if (across < 3 || across > 9) continue; // a plain street, not a plaza
-                // centre the strip across the street
-                int lo = 0; while (!m.Blocked(alongX ? i : i - lo - 1, alongX ? j - lo - 1 : j) && lo < 10) lo++;
-                float centreAcross = (alongX ? j : i) - lo + across * 0.5f;
-                float len = Lerp(6f, 15f), wid = Mathf.Max(1.8f, across - 1.2f);
-                var c = alongX ? new Vector2(i + 0.5f, centreAcross) : new Vector2(centreAcross, j + 0.5f);
-                var f = new GroundFeature { type = GroundType.IntactRoad, center = c, size = alongX ? new Vector2(len, wid) : new Vector2(wid, len) };
-                if ((c - m.BasePos).magnitude < 4f || (c - m.TargetPos).magnitude < 4f || !Fits(m, f)) continue;
-                m.features.Add(f); placed++;
-            }
+            PlaceIntactRoads(m, rng, Mathf.RoundToInt(cp.intactRoads * areaScale));
             // half of the landable patches sit at street intersections (crossroads, wide junctions), the rest anywhere
             var junctions = new List<Vector2>();
             for (int j = 2; j < m.H - 2; j += 2)
@@ -294,6 +276,28 @@ namespace CommDrone
                 }
             }
             float Lerp(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+        }
+
+        /// Intact-road strips: street-aligned landable stretches where the street surface survived.
+        public static void PlaceIntactRoads(TownMap m, System.Random rng, int nRoads)
+        {
+            float Lerp(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+            for (int placed = 0, attempt = 0; placed < nRoads && attempt < nRoads * 60; attempt++)
+            {
+                int i = rng.Next(2, m.W - 2), j = rng.Next(2, m.H - 2);
+                if (m.Blocked(i, j)) continue;
+                int rx = Run(m, i, j, 1, 0), ry = Run(m, i, j, 0, 1);
+                bool alongX = rx > ry;
+                int across = alongX ? ry : rx;
+                if (across < 3 || across > 9) continue; // a plain street, not a plaza
+                int lo = 0; while (!m.Blocked(alongX ? i : i - lo - 1, alongX ? j - lo - 1 : j) && lo < 10) lo++;
+                float centreAcross = (alongX ? j : i) - lo + across * 0.5f;
+                float len = Lerp(6f, 15f), wid = Mathf.Max(1.8f, across - 1.2f);
+                var c = alongX ? new Vector2(i + 0.5f, centreAcross) : new Vector2(centreAcross, j + 0.5f);
+                var f = new GroundFeature { type = GroundType.IntactRoad, center = c, size = alongX ? new Vector2(len, wid) : new Vector2(wid, len) };
+                if ((c - m.BasePos).magnitude < 4f || (c - m.TargetPos).magnitude < 4f || !Fits(m, f)) continue;
+                m.features.Add(f); placed++;
+            }
         }
 
         static bool Fits(TownMap m, GroundFeature f)

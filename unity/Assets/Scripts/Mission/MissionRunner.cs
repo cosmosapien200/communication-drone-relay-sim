@@ -72,6 +72,7 @@ namespace CommDrone
                     case "-demoLevel": handBuiltDemoLevel = v == "1"; break;
                     case "-out": outPath = v; break;
                     case "-dumpDir": DroneMission.DumpDir = v; break;
+                    case "-frameDump": VisionSegmenter.FrameDump = v; break;
                 }
             }
             cfg.maxDrones = maxDrones;
@@ -190,7 +191,8 @@ namespace CommDrone
             foreach (var d in finished) { if (d.crashed) lost++; attempts += d.landingAttempts; total += d.time; }
             string reason = covered ? "" : finished.Count > 0 ? finished[finished.Count - 1].failReason : "none";
             if (!covered && droneIndex >= cfg.maxDrones && reason == "") reason = "out_of_drones";
-            csv.AppendLine(string.Join(",", missionIndex, Seed, S(level), detector, S(noiseScale), cfg.strategy, cfg.useSharedMap ? 1 : 0, cfg.flight,
+            string det = detector.StartsWith("cnn") ? detector + ":" + segModel : detector;
+            csv.AppendLine(string.Join(",", missionIndex, Seed, S(level), det, S(noiseScale), cfg.strategy, cfg.useSharedMap ? 1 : 0, cfg.flight,
                 covered ? 1 : 0, reason, finished.Count, lost, S(basePathDist - finalPath), S(basePathDist), S(finalPath),
                 S(float.IsInfinity(chain) ? float.NaN : chain), S(targetRssi), attempts, S(total)));
             foreach (var d in finished)
