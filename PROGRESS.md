@@ -2,6 +2,16 @@
 
 Updated at every major milestone. Newest first.
 
+## 2026-10-17 04:00 — All experiments, demo video, report draft (checkpoints 5–7)
+- Vision v2 (world with intact roads): test mIoU 0.909, landable IoU 0.81; locator FN 1.6 %, FP 40 %, median 0.44 m.
+  Mid (20 % maps) mIoU 0.66; weak (5 % maps) 0.48.
+- nav_ppo_v2 fine-tune did not beat v1 on held-out maps (L4 80 % both; full-mode L4 65 % vs 74 %) → nav_v1 deployed.
+- **Missions (L2, 100 held-out each)**: GT vision 43 % covered / +63.6 m; real U-Net 34 % / +58.1 m; mid 7 % / +27.9 m;
+  weak 0 %. Noise sweep k=0…8: 65 → 64 (k=1) → 61 (k=2) → 53 (k=4) → 0 m. Shared map cuts exploration 52 → 30 s
+  per drone. Spot rule best/random/nearest: 47/25/3 %. Scripted nav stand-in 9 % (2.6 drones lost/mission). L3 17 %, L4 2 %.
+- Demo video recorded on the hand-built level with the real detector: 4 relays, camp covered (2/6 seeds succeed).
+- Report draft `docs/report.md`; checkpoints 5–7 written.
+
 ## 2026-10-17 02:55 — Evaluations, mission planner, world fixes
 - **Nav eval** (held-out odd seeds, 100 eps/level): PPO 98/98/93/80 % (L1–L4) vs potential field 93/92/78/54 %,
   straight line 84/64/39/18 %, A*+reactive 100/100/99/94 %. Full-quadrotor transfer L4: 74 %. `docs/results/nav_v1/`.

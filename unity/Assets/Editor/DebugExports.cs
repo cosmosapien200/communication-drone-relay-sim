@@ -63,3 +63,35 @@ namespace CommDrone.EditorTools
         }
     }
 }
+
+namespace CommDrone.EditorTools
+{
+    /// Report figures: rendered overview of a generated town (RGB and label mode).
+    public static class ReportShots
+    {
+        public static void TownOverview()
+        {
+            UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Single);
+            foreach (var lvl in new[] { 2, 4 })
+            {
+                var map = MapGenerator.Generate(5000 + lvl * 2 + 1, CurriculumParams.ForLevel(lvl));
+                var vis = TownBuilder.Build(map, 77);
+                var cam = new GameObject("cam").AddComponent<Camera>();
+                cam.fieldOfView = 50; cam.farClipPlane = 800; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(0.62f, 0.68f, 0.78f);
+                cam.transform.position = map.ToWorld(new Vector2(map.W * 0.5f, -map.H * 0.35f), map.W * 0.95f);
+                cam.transform.LookAt(map.ToWorld(new Vector2(map.W * 0.5f, map.H * 0.5f), 0));
+                ScreenshotUtil.RenderCamera(cam, 1280, 800, $"../docs/screenshots/town_L{lvl}_rgb.png");
+                vis.SetLabelMode(true); cam.backgroundColor = Color.black;
+                ScreenshotUtil.RenderCamera(cam, 1280, 800, $"../docs/screenshots/town_L{lvl}_labels.png");
+                Object.DestroyImmediate(cam.gameObject); vis.Destroy();
+            }
+            var demo = DemoLevel.Build();
+            var dv = TownBuilder.Build(demo, 99);
+            var c2 = new GameObject("cam").AddComponent<Camera>();
+            c2.orthographic = true; c2.orthographicSize = 62; c2.farClipPlane = 300; c2.clearFlags = CameraClearFlags.SolidColor; c2.backgroundColor = Color.black;
+            c2.transform.position = demo.ToWorld(new Vector2(60, 60), 150); c2.transform.rotation = Quaternion.Euler(90, 0, 0);
+            ScreenshotUtil.RenderCamera(c2, 1000, 1000, "../docs/screenshots/demo_level_topdown.png");
+            Object.DestroyImmediate(c2.gameObject); dv.Destroy();
+        }
+    }
+}

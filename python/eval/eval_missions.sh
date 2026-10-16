@@ -10,6 +10,7 @@ mkdir -p $OUT
 run vision_gt     -nographics -level 2 -detector gt
 run vision_cnn    -level 2 -detector cnn -segModel $SEG
 run vision_weak   -level 2 -detector cnn -segModel $WEAK
+run vision_mid    -level 2 -detector cnn -segModel unet_mid
 # 2. detector-quality sweep with the measured noise model (headline plot)
 for k in 0 0.5 1 2 4 8; do run quality_k$k -nographics -level 2 -detector noisy -noiseScale $k; done
 # 3. shared map vs none

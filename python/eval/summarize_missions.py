@@ -62,7 +62,7 @@ def main(src, dst):
         if rows:
             S[os.path.basename(p)[:-4]] = stats(rows, drones)
     out = ["# Full-mission results", "", "Held-out seeds (odd, 2000001+). Mean ± std over missions.", ""]
-    groups = [("Vision ablation (level 2)", ["vision_gt", "vision_cnn", "vision_weak"]),
+    groups = [("Vision ablation (level 2)", ["vision_gt", "vision_cnn", "vision_mid", "vision_weak"]),
               ("Detector-quality sweep, measured noise model × k (level 2)", [k for k in S if k.startswith("quality_k")]),
               ("Spot selection strategy (level 2, noise model)", ["strategy_best", "strategy_random", "strategy_nearest"]),
               ("Difficulty (noise model)", ["quality_k1", "level_L3", "level_L4"]),
