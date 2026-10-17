@@ -134,16 +134,25 @@ namespace CommDrone
             lr.startColor = lr.endColor = c;
         }
 
+        GameObject bs, camp;
+        public int camMode; // 0 chase, 1 overview, 2 top-down
+        public static readonly string[] CamModes = { "chase", "overview", "top-down" };
+
         void SetupMap()
         {
             shownMap = runner.truth;
             foreach (var g in relayGos) Destroy(g);
             relayGos.Clear();
+            foreach (var l in links) l.positionCount = 0;
+            if (bs) Destroy(bs);
+            if (camp) Destroy(camp);
+            if (droneGo) droneGo.SetActive(false);
+            overviewUntil = Time.time + 5f;
             var m = shownMap;
-            var bs = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            bs = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             bs.transform.position = m.ToWorld(m.BasePos, 1.5f); bs.transform.localScale = new Vector3(1.2f, 1.5f, 1.2f);
             bs.GetComponent<Renderer>().sharedMaterial = baseMat;
-            var camp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            camp = GameObject.CreatePrimitive(PrimitiveType.Cube);
             camp.transform.position = m.ToWorld(m.TargetPos, 1f); camp.transform.localScale = new Vector3(3f, 2f, 3f);
             camp.GetComponent<Renderer>().sharedMaterial = campMat;
             minimap = new Texture2D(m.W, m.H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
@@ -155,7 +164,12 @@ namespace CommDrone
         {
             var m = runner.truth;
             Vector3 target, look;
-            if (d == null || Time.time < overviewUntil || d.Finished)
+            if (camMode == 2)
+            {
+                target = m.ToWorld(new Vector2(m.W * 0.5f, m.H * 0.38f), m.W * 1.2f);
+                look = m.ToWorld(new Vector2(m.W * 0.5f, m.H * 0.5f + 0.01f), 0f);
+            }
+            else if (camMode == 1 || d == null || Time.time < overviewUntil || d.Finished)
             {
                 target = m.ToWorld(new Vector2(m.W * 0.5f, -m.H * 0.15f), m.W * 0.85f);
                 look = m.ToWorld(new Vector2(m.W * 0.5f, m.H * 0.55f), 0f);

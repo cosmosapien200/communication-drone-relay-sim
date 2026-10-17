@@ -36,6 +36,25 @@ namespace CommDrone.EditorTools
             Build(new[] { scenePath }, "Mission");
         }
 
+        /// Live demo scene: open Assets/Scenes/Demo.unity in the Editor and press Play, or run Builds/Demo/Demo.x86_64.
+        public static void MakeDemoScene()
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var go = new GameObject("MissionRunner");
+            var r = go.AddComponent<MissionRunner>();
+            r.demo = true; r.detector = "cnn"; r.segModel = "unet_v2"; r.navModel = "nav_v1"; r.landModel = "land_v3";
+            r.catalogIndex = 0; r.demoSpeed = 2;
+            go.AddComponent<MissionView>();
+            go.AddComponent<DemoMenu>();
+            EditorSceneManager.SaveScene(scene, "Assets/Scenes/Demo.unity");
+        }
+
+        public static void BuildDemo()
+        {
+            MakeDemoScene();
+            Build(new[] { "Assets/Scenes/Demo.unity" }, "Demo");
+        }
+
         public static void BuildTraining(TrainingManager.Kind kind, string name)
         {
             string scenePath = $"Assets/Scenes/{name}.unity";

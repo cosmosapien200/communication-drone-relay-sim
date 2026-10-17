@@ -21,6 +21,10 @@ namespace CommDrone
         public bool demo;
         public int stepsPerFrame = 50;
         public bool handBuiltDemoLevel;
+        public int catalogIndex = -1;   // >= 0: live demo map from DemoCatalog
+        public bool paused;
+        int runSeedOverride = -1;
+        ICellDetector cnnCellDet; ISpotDetector cnnSpotDet;
 
         // runtime state (public for the HUD / demo recorder)
         public TownMap truth;
@@ -70,6 +74,8 @@ namespace CommDrone
                     case "-maxDrones": maxDrones = int.Parse(v); break;
                     case "-demo": demo = v == "1"; break;
                     case "-demoLevel": handBuiltDemoLevel = v == "1"; break;
+                    case "-demoMap": catalogIndex = int.Parse(v); break;
+                    case "-runSeed": runSeedOverride = int.Parse(v); break;
                     case "-out": outPath = v; break;
                     case "-dumpDir": DroneMission.DumpDir = v; break;
                     case "-frameDump": VisionSegmenter.FrameDump = v; break;
@@ -82,7 +88,7 @@ namespace CommDrone
             var landAsset = Resources.Load<ModelAsset>("Models/" + landModel);
             if (navAsset) nav = new PolicyRunner(navAsset, NavAgent.ObsSize); else Debug.LogWarning("nav model missing, scripted nav");
             if (landAsset) land = new PolicyRunner(landAsset, LandAgent.ObsSize); else Debug.LogWarning("land model missing, scripted landing");
-            if (detector.StartsWith("cnn"))
+            if (detector.StartsWith("cnn") || demo)
             {
                 var segAsset = Resources.Load<ModelAsset>("Models/" + segModel);
                 seg = new SegModel(segAsset);
@@ -90,9 +96,10 @@ namespace CommDrone
                 visionCam.enabled = false; visionCam.allowMSAA = false;
                 visionCam.nearClipPlane = 0.05f; visionCam.farClipPlane = 200f;
                 visionCam.clearFlags = CameraClearFlags.SolidColor; visionCam.backgroundColor = new Color(0.62f, 0.68f, 0.78f);
-                cellDet = new VisionSegmenter(seg, visionCam);
-                spotDet = new LandingSpotLocator(seg, visionCam);
+                cellDet = cnnCellDet = new VisionSegmenter(seg, visionCam);
+                spotDet = cnnSpotDet = new LandingSpotLocator(seg, visionCam);
             }
+            if (catalogIndex >= 0) { seedBase = runSeedOverride > 0 ? runSeedOverride : DemoCatalog.Entries[catalogIndex].runSeed; missions = 1; }
             csv.AppendLine("mission,seed,level,detector,noise_scale,strategy,shared,flight,success,fail_reason,drones_used,drones_lost,range_extended_m,base_path_m,final_path_m,chain_quality_dbm,target_rssi_dbm,landing_attempts,total_time_s");
             droneCsv.AppendLine("mission,seed,drone,outcome,fail_reason,explore_time_s,battery_used_s,flight_time_s,landing_attempts,landed_rssi,shared");
             StartMission();
@@ -107,7 +114,8 @@ namespace CommDrone
         {
             visual?.Destroy();
             rng = new System.Random(Seed);
-            truth = handBuiltDemoLevel ? DemoLevel.Build() : MapGenerator.Generate(Seed, CurriculumParams.ForLevel(level));
+            truth = catalogIndex >= 0 ? DemoCatalog.Build(DemoCatalog.Entries[catalogIndex])
+                  : handBuiltDemoLevel ? DemoLevel.Build() : MapGenerator.Generate(Seed, CurriculumParams.ForLevel(level));
             wifi = new WifiModel(truth, new WifiParams(), Seed);
             shared = new SharedMap(truth);
             shared.nodes.Add(truth.ToWorld(truth.BasePos, 3f)); // base-station antenna mast
@@ -118,7 +126,8 @@ namespace CommDrone
                 visual = TownBuilder.Build(truth, Seed ^ 0x5bd1e995);
                 if (spotDet is LandingSpotLocator loc) loc.worldOrigin = truth.origin;
             }
-            if (!detector.StartsWith("cnn"))
+            if (detector.StartsWith("cnn")) { cellDet = cnnCellDet; spotDet = cnnSpotDet; }
+            else
             {
                 var np = VisionCalibration.LoadNoise();
                 if (detector == "gt")
@@ -151,9 +160,22 @@ namespace CommDrone
             status = $"mission {missionIndex + 1}/{missions} drone {droneIndex}";
         }
 
+        /// Live demo: switch to catalog map `index` (or restart the current one) with the given detector.
+        public void Restart(int index, string det = null)
+        {
+            if (det != null) detector = det;
+            catalogIndex = index;
+            seedBase = DemoCatalog.Entries[index].runSeed;
+            missionIndex = 0; missions = 1; done = false; paused = false;
+            current = null;
+            StartMission();
+        }
+
+        public string ConditionLabel => catalogIndex >= 0 ? DemoCatalog.Entries[catalogIndex].name : $"level {level} seed {Seed}";
+
         void Update()
         {
-            if (done) return;
+            if (done || paused) return;
             int n = demo ? Mathf.Max(1, demoSpeed) : stepsPerFrame;
             for (int k = 0; k < n && !done; k++) Tick();
         }
@@ -199,7 +221,7 @@ namespace CommDrone
                 droneCsv.AppendLine(string.Join(",", missionIndex, Seed, d.index, d.mode, d.failReason, S(d.exploreTime), S(cfg.batteryCapacity - d.battery),
                     S(d.time), d.landingAttempts, S(d.mode == MissionMode.Done ? d.landedRssi : float.NaN), cfg.useSharedMap ? 1 : 0));
             Debug.Log($"Mission {missionIndex} seed {Seed}: covered={covered} drones={finished.Count} reason={reason} range+={basePathDist - finalPath:F1} m chain={chain:F1} dBm");
-            if (demo) { done = true; status = covered ? "TARGET COVERED" : "mission failed: " + reason; Flush(); return; }
+            if (demo) { done = true; status = covered ? "TARGET COVERED" : "mission failed: " + reason; if (outPath != "missions.csv") Flush(); return; }
             missionIndex++;
             if (missionIndex >= missions) { done = true; Flush(); Application.Quit(0); return; }
             StartMission();
