@@ -15,15 +15,15 @@ namespace CommDrone
             public int runSeed;     // wind / noise seed for the mission
         }
 
-        // runSeeds / mapSeeds below are filled from python/tools/pick_demo_seeds.sh results
+        // seeds verified to complete the chain with the real U-Net (results/demo_seeds/)
         public static readonly Entry[] Entries =
         {
             new Entry { name = "Z-route", description = "East, north, east: one relay at each corner (≈4 relays).", handBuilt = 0, runSeed = 2000001 },
             new Entry { name = "U-turn", description = "Camp is behind the base's block: the chain must go round three sides.", handBuilt = 1, runSeed = 2000001 },
             new Entry { name = "Staircase", description = "Short alternating streets climbing to a camp in the far corner.", handBuilt = 2, runSeed = 2000001 },
             new Entry { name = "Blocked boulevard", description = "The straight boulevard is cut by rubble; detour via a parallel street.", handBuilt = 3, runSeed = 2000001 },
-            new Entry { name = "Procedural town A", description = "Generated level-2 town (held-out seed).", handBuilt = -1, level = 2, mapSeed = 2000001, runSeed = 2000001 },
-            new Entry { name = "Procedural town B", description = "Generated level-3 town (held-out seed).", handBuilt = -1, level = 3, mapSeed = 2000003, runSeed = 2000003 },
+            new Entry { name = "Procedural town A", description = "Generated level-2 town (held-out seed 2000015): 5 relays.", handBuilt = -1, level = 2, mapSeed = 2000015, runSeed = 2000015 },
+            new Entry { name = "Procedural town B", description = "Generated level-3 town (held-out seed 2000001): 5 relays.", handBuilt = -1, level = 3, mapSeed = 2000001, runSeed = 2000001 },
         };
 
         public static TownMap Build(Entry e) => e.handBuilt >= 0 ? DemoLevels.Build(e.handBuilt) : MapGenerator.Generate(e.mapSeed, CurriculumParams.ForLevel(e.level));
