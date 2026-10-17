@@ -13,6 +13,8 @@ Demo video: [`docs/demo/demo_level_real_detector.mp4`](docs/demo/demo_level_real
 | **Drone** | Simulated flight controller (velocity setpoints), fast first-order model for training, full 6-DOF quadrotor with cascaded PID for evaluation |
 | **Mission** | Scripted planner: frontier exploration, spot selection, shared map, sequential multi-drone chaining |
 
+**New here? Start with [`docs/EXPLAINER.md`](docs/EXPLAINER.md)** — how everything works, end to end.
+
 Full spec: [`SPEC.md`](SPEC.md) · report: [`docs/report.md`](docs/report.md) · log: [`PROGRESS.md`](PROGRESS.md)
 
 ---

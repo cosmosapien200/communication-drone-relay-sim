@@ -245,6 +245,7 @@ namespace CommDrone
             if (landedRssi < wifi.p.tLink) { RejectSpot(takeOff: true); return; }
             map.nodes.Add(landedWorld);
             mode = MissionMode.Done;
+            if (DumpDir != null) Dump("landed");
         }
 
         void RejectSpot(bool takeOff = false)
@@ -343,6 +344,7 @@ namespace CommDrone
             Arr("obstacle", k => map.obstacle[k] ? "1" : "0");
             Arr("landable", k => map.IsLandable(k) ? "1" : "0");
             Arr("landyes", k => map.landYes[k].ToString("0.#", inv));
+            Arr("landno", k => map.landNo[k].ToString("0.#", inv));
             Arr("trueland", k => truth.GroundClassAt(map.CellCenter(k % map.W, k / map.W)) == SegClass.Landable ? "1" : "0");
             Arr("rssi", k => RssiEstimate(k % map.W, k / map.W).ToString("0.#", inv));
             Arr("tfield", k => float.IsInfinity(targetField.dist[k]) ? "-1" : targetField.dist[k].ToString("0.#", inv));
