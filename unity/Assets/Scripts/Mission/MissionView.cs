@@ -189,7 +189,7 @@ namespace CommDrone
         void UpdatePip(DroneMission d)
         {
             bool nadir = d.mode == MissionMode.Land;
-            pipCam.transform.SetPositionAndRotation(d.World, Quaternion.Euler(nadir ? 90f : 45f, d.fc.yaw, 0f));
+            pipCam.transform.SetPositionAndRotation(d.World, Quaternion.Euler(nadir ? 90f : 45f, nadir ? d.fc.yaw : d.CameraYaw, 0f));
             pipCam.Render();
             if (overlayModel == null || (d.mode != MissionMode.Explore && d.mode != MissionMode.Navigate && !nadir)) return;
             overlayModel.Run(pipRT);

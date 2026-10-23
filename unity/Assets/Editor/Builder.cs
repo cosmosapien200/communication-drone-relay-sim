@@ -42,7 +42,7 @@ namespace CommDrone.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var go = new GameObject("MissionRunner");
             var r = go.AddComponent<MissionRunner>();
-            r.demo = true; r.detector = "cnn"; r.segModel = "unet_v2"; r.navModel = "nav_v1"; r.landModel = "land_v3";
+            r.demo = true; r.detector = "cnn"; r.segModel = "unet_v4"; r.navModel = "nav_v1"; r.landModel = "land_v3";
             r.catalogIndex = 0; r.demoSpeed = 2;
             go.AddComponent<MissionView>();
             go.AddComponent<DemoMenu>();

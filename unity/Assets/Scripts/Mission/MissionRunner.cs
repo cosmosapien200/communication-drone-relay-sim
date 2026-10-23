@@ -23,7 +23,7 @@ namespace CommDrone
         public bool handBuiltDemoLevel;
         public int catalogIndex = -1;   // >= 0: live demo map from DemoCatalog
         public bool paused;
-        int runSeedOverride = -1;
+        int runSeedOverride = -1, mapSeedOverride = -1;
         ICellDetector cnnCellDet; ISpotDetector cnnSpotDet;
 
         // runtime state (public for the HUD / demo recorder)
@@ -76,9 +76,11 @@ namespace CommDrone
                     case "-demoLevel": handBuiltDemoLevel = v == "1"; break;
                     case "-demoMap": catalogIndex = int.Parse(v); break;
                     case "-runSeed": runSeedOverride = int.Parse(v); break;
+                    case "-mapSeed": mapSeedOverride = int.Parse(v); break;
                     case "-out": outPath = v; break;
                     case "-dumpDir": DroneMission.DumpDir = v; break;
                     case "-frameDump": VisionSegmenter.FrameDump = v; break;
+                    case "-frameFocus": { var xy = v.Split(','); VisionSegmenter.FrameFocus = new Vector2(F(xy[0]), F(xy[1])); VisionSegmenter.FrameFocusRadius = F(xy[2]); break; }
                 }
             }
             cfg.maxDrones = maxDrones;
@@ -115,7 +117,7 @@ namespace CommDrone
             visual?.Destroy();
             rng = new System.Random(Seed);
             truth = catalogIndex >= 0 ? DemoCatalog.Build(DemoCatalog.Entries[catalogIndex])
-                  : handBuiltDemoLevel ? DemoLevel.Build() : MapGenerator.Generate(Seed, CurriculumParams.ForLevel(level));
+                  : handBuiltDemoLevel ? DemoLevel.Build() : MapGenerator.Generate(mapSeedOverride > 0 ? mapSeedOverride : Seed, CurriculumParams.ForLevel(level));
             wifi = new WifiModel(truth, new WifiParams(), Seed);
             shared = new SharedMap(truth);
             shared.nodes.Add(truth.ToWorld(truth.BasePos, 3f)); // base-station antenna mast

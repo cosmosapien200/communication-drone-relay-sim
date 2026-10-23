@@ -1,0 +1,5 @@
+#!/bin/sh
+# Batch-mode Unity call (use when the Editor is closed): ./ubuild Class.Method
+cd "$(dirname "$0")"
+exec timeout 1800 "$HOME/Unity/Hub/Editor/6000.6.4f1/Editor/Unity" -batchmode -quit ${GRAPHICS:+} $( [ -z "$GRAPHICS" ] && echo -nographics) -projectPath "$PWD/unity" \
+  -executeMethod "CommDrone.EditorTools.$1" -logFile "$PWD/results/unity_batch.log"

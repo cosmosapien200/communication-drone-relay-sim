@@ -45,6 +45,7 @@ namespace CommDrone
 
         // telemetry
         public float time, battery, exploreTime, rssiToParent, lastReward, detConfidence;
+        public float CameraYaw;
         public int landingAttempts, step;
         public Vector2 waypoint;            // current hop
         public Vector2 goal;                // current frontier / spot
@@ -129,7 +130,13 @@ namespace CommDrone
             {
                 // gimbal pans +-60 deg (period 4 s) while exploring so side streets are seen
                 float pan = mode == MissionMode.Explore ? 60f * Mathf.Sin(2f * Mathf.PI * time / 4f) : 0f;
-                var camRot = Quaternion.Euler(45f, fc.yaw + pan, 0f);
+                // the gimbal looks where the planner is going (goal), else along the velocity; the nav policy's body yaw
+                // is free (it often flies sideways or backwards), so a body-fixed camera missed what lay ahead
+                Vector2 look = goal - Pos;
+                var vel = new Vector2(fc.velocity.x, fc.velocity.z);
+                if (look.magnitude < 2f) look = vel.magnitude > 0.3f ? vel : new Vector2(Mathf.Sin(fc.yaw * Mathf.Deg2Rad), Mathf.Cos(fc.yaw * Mathf.Deg2Rad));
+                CameraYaw = Mathf.Atan2(look.x, look.y) * Mathf.Rad2Deg + pan;
+                var camRot = Quaternion.Euler(45f, CameraYaw, 0f);
                 OnCamera?.Invoke(this, World, camRot);
                 map.AddVision(cellDet.Observe(truth, World, camRot, NadirCamera.FovDeg));
             }
@@ -369,7 +376,10 @@ namespace CommDrone
             var pos = knownFree.ToWorld(map.CellCenter(i, j), Sim.CruiseAltitude);
             float d = Mathf.Max(Vector3.Distance(parentWorld, pos), wifi.p.d0);
             float loss = 0f;
-            knownFree.ForEachObstacleRun(truth.ToLocal(parentWorld), map.CellCenter(i, j), _ => loss += 2f * wifi.p.lossConcrete);
+            // known obstacles cost two concrete walls; unexplored stretches cost an uncertainty penalty
+            // (v1 treated unexplored space as open air, which lured drones out of radio range)
+            knownExplored.ForEachObstacleRun(truth.ToLocal(parentWorld), map.CellCenter(i, j),
+                mat => loss += mat == WallMaterial.Concrete ? 2f * wifi.p.lossConcrete : UnknownPenalty);
             return wifi.p.P0 - 10f * wifi.p.n * Mathf.Log10(d / wifi.p.d0) - loss - 2f;
         }
 
@@ -398,6 +408,8 @@ namespace CommDrone
 
         /// Spot rule: among landable spots with RSSI to parent >= T_link + M + ground penalty, the shortest path
         /// distance to the target (ties: higher RSSI). Alternative strategies for the Section 12 comparison.
+        public const float UnknownPenalty = 6f;  // dB per unexplored stretch on the line to the parent
+        public const float TentativeMargin = 2f; // spots up to 2 dB below the threshold are visited and re-measured
         public const float MinProgress = 5f; // m of path distance toward the target a new relay must gain over its parent
         float parentTargetDist => targetField.At(truth.ToLocal(parentWorld));
 
@@ -420,7 +432,7 @@ namespace CommDrone
                     float dist = targetField.AtCell(i, j);
                     if (dist > pDist - MinProgress) continue; // a relay must extend the chain toward the target
                     float rssi = RssiEstimate(i, j);
-                    if (rssi < wifi.p.QualifyThreshold) continue;
+                    if (rssi < wifi.p.QualifyThreshold - TentativeMargin) continue; // final check: hover-averaged RSSI at the spot
                     cands.Add((c, dist, rssi));
                 }
             if (cands.Count == 0) return false;

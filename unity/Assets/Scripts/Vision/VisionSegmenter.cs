@@ -56,6 +56,7 @@ namespace CommDrone
         public float maxRange = 25f;    // ignore far-away ground (low resolution)
 
         public static string FrameDump; int dumped, frameCounter;
+        public static Vector2 FrameFocus; public static float FrameFocusRadius;
         void Dump()
         {
             System.IO.Directory.CreateDirectory(FrameDump);
@@ -63,6 +64,8 @@ namespace CommDrone
             var t = new Texture2D(R, R, TextureFormat.RGB24, false);
             var prev = RenderTexture.active; RenderTexture.active = rt; t.ReadPixels(new Rect(0, 0, R, R), 0, 0); t.Apply(); RenderTexture.active = prev;
             System.IO.File.WriteAllBytes(System.IO.Path.Combine(FrameDump, $"v{dumped}_rgb.png"), t.EncodeToPNG());
+            var tp = cam.transform; var e = tp.rotation.eulerAngles; var ic = System.Globalization.CultureInfo.InvariantCulture;
+            System.IO.File.AppendAllText(System.IO.Path.Combine(FrameDump, "poses.csv"), string.Format(ic, "v{0},{1},{2},{3},{4},{5},{6}\n", dumped, tp.position.x, tp.position.y, tp.position.z, e.x, e.y, e.z));
             Color32[] pal = { new Color32(0, 0, 0, 255), new Color32(0, 255, 0, 255), new Color32(255, 0, 0, 255), new Color32(0, 0, 255, 255) };
             var px = new Color32[R * R];
             for (int v = 0; v < R; v++) for (int u = 0; u < R; u++) px[(R - 1 - v) * R + u] = pal[model.argmax[v * R + u]];
@@ -86,7 +89,11 @@ namespace CommDrone
             cam.Render();
             cam.targetTexture = prev;
             model.Run(rt);
-            if (FrameDump != null && dumped < 12 && (frameCounter++ % 10) == 0) Dump();
+            if (FrameDump != null)
+            {
+                bool near = FrameFocusRadius > 0 && (map.ToLocal(camPosWorld) - FrameFocus).magnitude < FrameFocusRadius;
+                if (FrameFocusRadius > 0 ? (near && dumped < 40) : (dumped < 12 && (frameCounter++ % 10) == 0)) Dump();
+            }
             return Project(map, camPosWorld, camRot, fovDeg, model.argmax, model.conf, stride, maxRange);
         }
 
@@ -100,10 +107,17 @@ namespace CommDrone
                     int i = v * R + u;
                     byte c = cls[i];
                     if (c == SegClass.Unknown || c == SegClass.Obstacle) continue; // only ground classes go to the landable channel
-                    if (!CameraGeometry.GroundHit(map, CameraGeometry.PixelRay(pos, rot, fov, u, v, R), maxRange, out var p)) continue;
+                    var ray = CameraGeometry.PixelRay(pos, rot, fov, u, v, R);
+                    if (!CameraGeometry.GroundHit(map, ray, maxRange, out var p)) continue;
                     var cell = map.CellOf(p);
                     if (!map.InBounds(cell.x, cell.y)) continue;
-                    res.Add(new CellObservation { cell = cell, cls = c, confidence = conf[i] });
+                    // v2 fusion: steep, close pixels are reliable; far grazing pixels are blurred and bleed across
+                    // patch edges, so they get much less weight (weight = confidence x incidence x (5 m / range)^2)
+                    float range = (p - map.ToLocal(pos)).magnitude;
+                    float q = 5f / Mathf.Max(5f, range);
+                    float w = conf[i] * Mathf.Clamp01(-ray.direction.y) * q * q; // inverse-square: one close look outweighs many distant ones
+                    if (w < 0.005f) continue;
+                    res.Add(new CellObservation { cell = cell, cls = c, confidence = w });
                 }
             return res;
         }

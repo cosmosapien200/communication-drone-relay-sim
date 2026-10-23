@@ -22,6 +22,26 @@ namespace CommDrone.EditorTools
             Generate("test", 400001, 15, 110, Res);
         }
 
+        /// Fine-tuning data for the detector's weak spot: close-range nadir frames (0.5-2.5 m) over landable
+        /// surfaces and look-alikes. New map seeds (train 600000+ even, test 700001+ odd).
+        public static void GenerateLowAlt()
+        {
+            lowAlt = true;
+            try { Generate("lowalt_train", 600000, 60, 60, Res); Generate("lowalt_test", 700001, 12, 60, Res); }
+            finally { lowAlt = false; }
+        }
+
+        static bool lowAlt, patchView;
+
+        /// Fine-tuning data for the explore camera's real use: 45 deg views aimed at a landable patch or look-alike
+        /// from 5-20 m (often in shadow at street corners). New map seeds (train 800000+ even, test 900001+ odd).
+        public static void GeneratePatchView()
+        {
+            patchView = true;
+            try { Generate("patchview_train", 800000, 80, 60, Res); Generate("patchview_test", 900001, 15, 60, Res); }
+            finally { patchView = false; }
+        }
+
         public static void Generate(string split, int seedBase, int maps, int framesPerMap, int res)
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -51,18 +71,41 @@ namespace CommDrone.EditorTools
                 bool fog = rng.NextDouble() < 0.3;
                 for (int f = 0; f < framesPerMap; f++)
                 {
-                    bool nadir = rng.NextDouble() < 0.45;
-                    Vector2 p;
-                    if (nadir && rng.NextDouble() < 0.7 && map.features.Count > 0)
+                    bool nadir; Vector2 p; float alt, yaw, pitch;
+                    if (patchView)
                     {
-                        var feat = map.features[rng.Next(map.features.Count)];
-                        p = feat.center + new Vector2(R(rng, -1.5f, 1.5f), R(rng, -1.5f, 1.5f)) * Mathf.Max(feat.size.x, feat.size.y) * 0.5f;
-                        if (map.Collides(p, 0.3f)) p = feat.center;
+                        // aim at a feature from 5-20 m along a free line of sight (what the explore gimbal sees)
+                        if (map.features.Count == 0) continue;
+                        var ft = map.features[rng.Next(map.features.Count)];
+                        p = ft.center; bool found = false;
+                        for (int t = 0; t < 30 && !found; t++)
+                        {
+                            float a = R(rng, 0, 2 * Mathf.PI), dist = R(rng, 5f, 20f);
+                            var dirv = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                            p = ft.center + dirv * dist;
+                            if (!map.Collides(p, 0.6f) && map.Raycast(p, -dirv, dist) >= dist - 0.1f) found = true;
+                        }
+                        if (!found) continue;
+                        var to = ft.center - p;
+                        nadir = false;
+                        alt = Sim.CruiseAltitude + R(rng, -0.5f, 0.5f);
+                        yaw = Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg + R(rng, -25f, 25f);
+                        pitch = 45f + R(rng, -5f, 5f);
                     }
-                    else p = RandomFree(map, rng, 0.6f);
-                    float alt = nadir ? R(rng, 0.6f, 6f) : Sim.CruiseAltitude + R(rng, -0.6f, 0.6f);
-                    float yaw = R(rng, 0, 360);
-                    float pitch = nadir ? 90f + R(rng, -3f, 3f) : 45f + R(rng, -6f, 6f);
+                    else
+                    {
+                        nadir = lowAlt || rng.NextDouble() < 0.45;
+                        if (nadir && rng.NextDouble() < (lowAlt ? 0.85 : 0.7) && map.features.Count > 0)
+                        {
+                            var feat = map.features[rng.Next(map.features.Count)];
+                            p = feat.center + new Vector2(R(rng, -1.5f, 1.5f), R(rng, -1.5f, 1.5f)) * Mathf.Max(feat.size.x, feat.size.y) * 0.5f;
+                            if (map.Collides(p, 0.3f)) p = feat.center;
+                        }
+                        else p = RandomFree(map, rng, 0.6f);
+                        alt = lowAlt ? R(rng, 0.5f, 2.5f) : nadir ? R(rng, 0.6f, 6f) : Sim.CruiseAltitude + R(rng, -0.6f, 0.6f);
+                        yaw = R(rng, 0, 360);
+                        pitch = nadir ? 90f + R(rng, -3f, 3f) : 45f + R(rng, -6f, 6f);
+                    }
                     cam.transform.position = map.ToWorld(p, alt);
                     cam.transform.rotation = Quaternion.Euler(pitch, yaw, R(rng, -2f, 2f));
                     // RGB render

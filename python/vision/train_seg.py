@@ -113,6 +113,9 @@ def main():
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--train-frac", type=float, default=1.0, help="fraction of training maps (weakened-detector ablation)")
+    ap.add_argument("--init", default=None, help="fine-tune from these weights (best.pt)")
+    ap.add_argument("--extra-train", default=None, help="additional training split (e.g. lowalt_train)")
+    ap.add_argument("--extra-test", default=None, help="additional test split reported separately (e.g. lowalt_test)")
     a = ap.parse_args()
     torch.manual_seed(a.seed); np.random.seed(a.seed)
     torch.set_num_threads(2)
@@ -125,6 +128,9 @@ def main():
         keep = set(seeds[: max(1, int(len(seeds) * a.train_frac))])
         idx = [i for i, r in enumerate(rtr) if r["seed"] in keep]
         Xtr, Ytr = Xtr[idx], Ytr[idx]
+    for split in (a.extra_train.split(",") if a.extra_train else []):
+        Xe, Ye, _ = load_split(a.data, split)
+        Xtr, Ytr = np.concatenate([Xtr, Xe]), np.concatenate([Ytr, Ye])
     Xva, Yva, _ = load_split(a.data, "val")
     Xte, Yte, _ = load_split(a.data, "test")
     print(f"loaded train {len(Xtr)} val {len(Xva)} test {len(Xte)} in {time.time() - t0:.1f}s", flush=True)
@@ -134,6 +140,8 @@ def main():
     print("class freq", np.round(freq, 4), "weights", w.cpu().numpy().round(3), flush=True)
 
     model = UNet(a.width).to(dev)
+    if a.init:
+        model.load_state_dict(torch.load(a.init, weights_only=True))
     print("params", sum(p.numel() for p in model.parameters()), flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)
     steps = a.epochs * (len(Xtr) // a.bs)
@@ -168,7 +176,12 @@ def main():
     model.load_state_dict(torch.load(os.path.join(a.out, "best.pt")))
     mt = evaluate(model, Xte, Yte, dev)
     print("TEST", json.dumps({k: (np.round(v, 4).tolist() if isinstance(v, list) and k != "confusion" else v) for k, v in mt.items()}), flush=True)
-    json.dump({"test": mt, "val_best_miou": best, "history": hist, "classes": CLASSES, "args": vars(a),
+    extra = {}
+    for split in (a.extra_test.split(",") if a.extra_test else []):
+        Xx, Yx, _ = load_split(a.data, split)
+        extra[split] = evaluate(model, Xx, Yx, dev)
+        print("EXTRA_TEST", split, json.dumps({k: (np.round(v, 4).tolist() if isinstance(v, list) and k != "confusion" else v) for k, v in extra[split].items()}), flush=True)
+    json.dump({"test": mt, "extra_test": extra, "val_best_miou": best, "history": hist, "classes": CLASSES, "args": vars(a),
                "train_images": len(Xtr), "params": sum(p.numel() for p in model.parameters())},
               open(os.path.join(a.out, "metrics.json"), "w"), indent=1)
     model.eval().cpu()

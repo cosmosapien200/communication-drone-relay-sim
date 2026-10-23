@@ -17,7 +17,7 @@ namespace CommDrone
         public List<Vector3> nodes = new List<Vector3>(); // world positions: base station, then landed relays
         public Vector2 targetPos;            // map-local camp position (known a priori)
 
-        public const float LandableMinEvidence = 3f, LandableRatio = 0.7f;
+        public const float LandableMinEvidence = 0.5f, LandableRatio = 0.6f; // v2: geometry-weighted evidence
 
         public SharedMap(TownMap truth)
         {
@@ -133,7 +133,7 @@ namespace CommDrone
             for (int k = 0; k < W * H; k++)
             {
                 bool blocked = obstacle[k] || (unknownBlocked && !explored[k]);
-                if (blocked) { m.occ[k] = 1; m.material[k] = (byte)(obstacle[k] ? WallMaterial.Concrete : WallMaterial.None); m.height[k] = 10f; }
+                if (blocked) { m.occ[k] = 1; m.material[k] = (byte)(obstacle[k] ? WallMaterial.Concrete : WallMaterial.Rubble); m.height[k] = 10f; } // Rubble marks "unexplored"
             }
             return m;
         }

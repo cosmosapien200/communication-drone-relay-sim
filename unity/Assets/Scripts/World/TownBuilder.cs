@@ -183,9 +183,10 @@ namespace CommDrone
                 v.sun = sunGo.AddComponent<Light>();
                 v.sun.type = LightType.Directional;
                 v.sun.shadows = LightShadows.Soft;
+                v.sun.shadowCustomResolution = 2048; // screen-independent shadows: live demo == headless runs
                 v.sun.intensity = R(0.6f, 1.4f);
                 v.sun.color = Color.Lerp(Color.white, new Color(1f, 0.85f, 0.65f), R(0, 0.6f));
-                sunGo.transform.rotation = Quaternion.Euler(R(25, 75), R(0, 360), 0);
+                sunGo.transform.rotation = Quaternion.Euler(R(15, 75), R(0, 360), 0);
                 RenderSettings.ambientLight = Color.gray * R(0.6f, 1.2f);
             }
             return v;
