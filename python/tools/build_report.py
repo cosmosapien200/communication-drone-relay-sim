@@ -35,6 +35,18 @@ M_GT_V2 = mission_stats(A("results/eval/missions_v2/vision_gt.csv"))
 doc = Document(TEMPLATE)
 for sec in doc.sections:
     sec.left_margin = sec.right_margin = Inches(1.0); sec.top_margin = sec.bottom_margin = Inches(0.9)
+    # page numbers in the footer, none on the title page
+    sec.different_first_page_header_footer = True
+    fp = sec.footer.paragraphs[0] if sec.footer.paragraphs else sec.footer.add_paragraph()
+    fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    def _fld(par, instr):
+        r = par.add_run(); b = OxmlElement("w:fldChar"); b.set(qn("w:fldCharType"), "begin"); r._r.append(b)
+        r = par.add_run(); t = OxmlElement("w:instrText"); t.set(qn("xml:space"), "preserve"); t.text = instr; r._r.append(t)
+        r = par.add_run(); e = OxmlElement("w:fldChar"); e.set(qn("w:fldCharType"), "separate"); r._r.append(e)
+        r = par.add_run("1")
+        r = par.add_run(); e = OxmlElement("w:fldChar"); e.set(qn("w:fldCharType"), "end"); r._r.append(e)
+    fp.add_run("Page ").font.size = Pt(9); _fld(fp, " PAGE "); fp.add_run(" of ").font.size = Pt(9); _fld(fp, " NUMPAGES ")
+    for r in fp.runs: r.font.size = Pt(9); r.font.color.rgb = RGBColor(0x59, 0x59, 0x59)
 body = doc.element.body
 for el in list(body):
     if el.tag != qn("w:sectPr"):
@@ -59,8 +71,9 @@ def P(text, **kw):
     return para(text, align="justify", **kw)
 
 
-def H1(t): return doc.add_paragraph(t, style="Heading 1")
-def H2(t): return doc.add_paragraph(t, style="Heading 2")
+HEADINGS = []
+def H1(t): HEADINGS.append((1, t)); return doc.add_paragraph(t, style="Heading 1")
+def H2(t): HEADINGS.append((2, t)); return doc.add_paragraph(t, style="Heading 2")
 def H3(t): return doc.add_paragraph(t, style="Heading 3")
 
 
@@ -155,6 +168,9 @@ for line in ("TEAM MEMBERS:", "LOKESHWARAN P – 23BAI1098", "ANNAMALAI SRINIVAS
     q = para(line, style="Normal", align="center"); q.runs[0].bold = line.startswith("TEAM")
 para("")
 para("Code, trained models and results: github.com/cosmosapien200/communication-drone-relay-sim", style="Normal", align="center", size=9)
+page_break()
+toc_title = doc.add_paragraph("Table of Contents", style="TOC Heading")
+TOC_ANCHOR = doc.add_paragraph()
 page_break()
 
 # ------------------------------------------------------------------ 1 Abstract
@@ -599,5 +615,52 @@ for i, r in enumerate(refs, 1):
     q = doc.add_paragraph(style="Body Text"); q.add_run(f"[{i}] ").bold = True; q.add_run(r)
     q.paragraph_format.left_indent = Inches(0.35); q.paragraph_format.first_line_indent = Inches(-0.35)
 
+# ------------------------------------------------------------------ table of contents (Word TOC field, pre-filled)
+from docx.enum.style import WD_STYLE_TYPE
+from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
+PAGES_JSON = A("Report/.toc_pages.json")
+pages = json.load(open(PAGES_JSON)) if os.environ.get("TOC_PASS") == "2" and os.path.exists(PAGES_JSON) else {}
+text_width = doc.sections[0].page_width - doc.sections[0].left_margin - doc.sections[0].right_margin
+for lvl in (1, 2):
+    name = f"toc {lvl}"
+    st_ = doc.styles[name] if name in [x.name for x in doc.styles] else doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+    st_.base_style = doc.styles["Normal"]
+    pf = st_.paragraph_format
+    pf.left_indent = Inches(0 if lvl == 1 else 0.3); pf.space_before = Pt(3 if lvl == 1 else 0); pf.space_after = Pt(0); pf.line_spacing = 1.0
+    pf.tab_stops.add_tab_stop(text_width, WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+    st_.font.size = Pt(10.5 if lvl == 1 else 9.5); st_.font.bold = lvl == 1
+anchor = TOC_ANCHOR._p
+def _fc(run, kind):
+    e = OxmlElement("w:fldChar"); e.set(qn("w:fldCharType"), kind); run._r.append(e)
+for k, (lvl, txt) in enumerate(HEADINGS):
+    par = doc.add_paragraph(style=f"toc {lvl}")
+    if k == 0:
+        _fc(par.add_run(), "begin")
+        r = par.add_run(); it = OxmlElement("w:instrText"); it.set(qn("xml:space"), "preserve"); it.text = ' TOC \\o "1-2" \\u '; r._r.append(it)
+        _fc(par.add_run(), "separate")
+    par.add_run(txt); par.add_run("\t" + str(pages.get(txt, "")))
+    if k == len(HEADINGS) - 1:
+        _fc(par.add_run(), "end")
+    anchor.addprevious(par._p)
+anchor.getparent().remove(anchor)
+
 doc.save(OUT)
+if os.environ.get("TOC_PASS") != "2":
+    # pass 1: render, find each heading's physical page, rebuild with page numbers (pass 2)
+    import re, subprocess, sys
+    rep = A("Report"); subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", rep, OUT], capture_output=True)
+    pdf = OUT[:-5] + ".pdf"
+    n = int(re.search(r"Pages:\s+(\d+)", subprocess.run(["pdfinfo", pdf], capture_output=True, text=True).stdout).group(1))
+    norm = lambda x: re.sub(r"\s+", " ", x).strip()
+    page_txt = [norm(subprocess.run(["pdftotext", "-f", str(i), "-l", str(i), pdf, "-"], capture_output=True, text=True).stdout) for i in range(1, n + 1)]
+    found = {}
+    for lvl, txt in HEADINGS:
+        key = norm(txt)[:40]
+        hits = [i + 1 for i, t in enumerate(page_txt) if key in t]
+        if hits: found[txt] = hits[-1]  # last occurrence: the body heading, not the TOC entry
+    json.dump(found, open(PAGES_JSON, "w"), indent=1)
+    missing = [t for _, t in HEADINGS if t not in found]
+    print("toc pass 1: pages found", len(found), "missing", missing)
+    os.environ["TOC_PASS"] = "2"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 print("saved", OUT, "figures", FIG[0], "tables", TAB[0], "mission v4:", M_CNN_V4, "gt:", M_GT_V2)
