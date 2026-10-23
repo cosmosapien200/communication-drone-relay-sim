@@ -16,7 +16,7 @@ Builds/
 __pycache__/
 *.pyc
 # Outputs
-results/
+/results/
 datasets/
 python/runs/
 *.log
