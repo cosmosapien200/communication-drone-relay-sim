@@ -60,6 +60,8 @@ namespace CommDrone.EditorTools
             File.WriteAllBytes($"../results/vision/locdebug/f{f}_mask.png", t.EncodeToPNG());
         }
 
+        public static void MeasureLocatorV4() => MeasureLocator("unet_v4", "../results/vision/locator_calib_unet_v4.csv", 15, 60);
+        public static void VerifyModelV4() => VerifyModel("unet_v4");
         public static void MeasureLocatorV3() => MeasureLocator("unet_v3", "../results/vision/locator_calib_unet_v3.csv", 15, 60);
         public static void VerifyModelV3() => VerifyModel("unet_v3");
 
