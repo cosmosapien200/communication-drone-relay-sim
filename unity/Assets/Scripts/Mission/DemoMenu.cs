@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace CommDrone
 {
-    /// Live-demo control panel (bottom-left). Keys: 1-9 pick a map, R restart, Space pause, +/- speed,
+    /// Live-demo control panel (bottom-left). Keys: 1-6 pick a map, R restart, Space pause, +/- speed,
     /// C camera (chase / overview / top-down), V vision (real U-Net / ground truth), H hide panel.
     public class DemoMenu : MonoBehaviour
     {
@@ -41,7 +41,7 @@ namespace CommDrone
             text ??= new GUIStyle { fontSize = 14, wordWrap = true, normal = { textColor = new Color(0.9f, 0.9f, 0.9f) } };
             button ??= new GUIStyle(GUI.skin.button) { fontSize = 14, alignment = TextAnchor.MiddleLeft };
             var n = DemoCatalog.Entries.Length;
-            float w = 340, h = 150 + n * 30;
+            float w = 420, h = 150 + n * 30;
             var r = new Rect(8, Screen.height - h - 8, w, h);
             GUI.color = new Color(0, 0, 0, 0.6f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             GUI.Label(new Rect(r.x + 10, r.y + 6, w, 24), "Demo maps", title);
@@ -59,7 +59,7 @@ namespace CommDrone
             GUI.Label(new Rect(r.x + 10, y, w - 20, 20),
                 $"vision: {(runner.detector.StartsWith("cnn") ? "real U-Net" : "ground truth")}   speed: x{runner.demoSpeed}   camera: {(view ? MissionView.CamModes[view.camMode] : "-")}{(runner.paused ? "   PAUSED" : "")}", text);
             y += 22;
-            GUI.Label(new Rect(r.x + 10, y, w - 20, 40), "1-9 map · R restart · Space pause · +/- speed · C camera · V vision · H hide", text);
+            GUI.Label(new Rect(r.x + 10, y, w - 20, 40), $"1-{n} map · R restart · Space pause · +/- speed · C camera · V vision · H hide", text);
         }
     }
 }

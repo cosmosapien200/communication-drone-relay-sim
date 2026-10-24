@@ -1,0 +1,9 @@
+#!/bin/sh
+# Live demo launcher. usage: ./demo            (windowed 1600x900)
+#                            ./demo full       (fullscreen, for projectors)
+cd "$(dirname "$0")"
+if [ "$1" = "full" ]; then
+  exec Builds/Demo/Demo.x86_64 -screen-fullscreen 1 -logFile /dev/null
+else
+  exec Builds/Demo/Demo.x86_64 -screen-fullscreen 0 -screen-width 1600 -screen-height 900 -logFile /dev/null
+fi
