@@ -10,8 +10,8 @@ import numpy as np
 
 _here = os.path.dirname(os.path.abspath(__file__))
 exec(open(os.path.join(_here, "build_ppt.py")).read().split("# ---------------------------------------------------------------- 1 title")[0])  # shared slide helpers
-os.makedirs(A("submissions/DA1"), exist_ok=True)
-OUT = A("submissions/DA1/DA1_PPO_Base_Paper_Presentation.pptx")
+OUT = os.environ.get("DA1_OUT", A("submissions/DA1/DA1_PPO_Base_Paper_Presentation.pptx"))
+STUDENT = os.environ.get("DA1_STUDENT", "LOKESHWARAN P  23BAI1098")
 FIG = A("docs/report_assets/drones/fig_ppo_clip.png")
 
 # the clipped objective as a function of the probability ratio r, for a single sample
@@ -30,7 +30,7 @@ cover(s, "docs/report_assets/video/t100.png", 7.0, 0, W - 7.0, H)
 text(s, 0.7, 1.1, 6.3, 2.2, "Proximal Policy Optimization Algorithms", size=38, color=WHITE, font=HEAD, bold=True)
 text(s, 0.7, 3.2, 6.3, 0.9, "Base paper for the Communication Drone project", size=18, color=RGBColor(0xC9, 0xD3, 0xE3), italic=True)
 text(s, 0.7, 4.3, 6.3, 1.0, "J. Schulman, F. Wolski, P. Dhariwal, A. Radford, O. Klimov (OpenAI), arXiv:1707.06347, 2017", size=14, color=WHITE)
-text(s, 0.7, 5.5, 6.3, 1.0, [[("Theory DA1 — Reinforcement Learning", {"bold": True})], "LOKESHWARAN P  23BAI1098"], size=14, color=WHITE)
+text(s, 0.7, 5.5, 6.3, 1.0, [[("Theory DA1 — Reinforcement Learning", {"bold": True})], STUDENT], size=14, color=WHITE)
 s.notes_slide.notes_text_frame.text = "We present the PPO paper, then show why it is the base method for our relay-drone project."
 
 # 2 why this paper
@@ -97,8 +97,8 @@ stat(s, 0.7, 3.5, 3.7, "−0.39", "same benchmark with no clipping or penalty", 
 bullets(s, 4.8, 1.6, 8.0, 5, [
     ("Continuous control: ", "beat TRPO, CEM, vanilla PG and A2C on almost all 7 MuJoCo tasks at 1 M steps."),
     ("3-D humanoid: ", "learned running, steering and getting up, showing that it scales to hard high-dimensional control."),
-    ("Atari (49 games): ", "fastest learning (best training-average reward on 30 games), with final scores close to ACER."),
-    ("Practical: ", "much simpler than ACER or TRPO, with one main hyperparameter, ε."),
+    ("Atari (49 games): ", "fastest learning (won 30 games on training-average reward); ACER won more on final scores, 28 to 19."),
+    ("Practical: ", "the paper notes PPO matches ACER's sample complexity while being much simpler."),
 ], size=17)
 
 # 8 algorithm selection
