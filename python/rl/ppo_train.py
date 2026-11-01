@@ -1,39 +1,4 @@
-"""Standalone PPO trainer (PyTorch) for the Communication Drone navigation and landing policies.
 
-This is a self-contained re-implementation of the training loop that `mlagents-learn` runs for us
-(python/rl/train.sh). It talks to the same headless Unity builds (Builds/NavTraining, Builds/LandTraining) through the
-low-level `mlagents_envs` API, reads the same per-run YAML files in configs/, and exports ONNX models with the same
-tensor names as ML-Agents, so the exported policy drops straight into unity/Assets/Resources/Models/ and is used by
-PolicyRunner.cs in missions and the live demo.
-
-The policies reported in the project were trained with `mlagents-learn`; this file makes every part of that training
-explicit and readable in one place:
-
-    observation normalisation (running mean / variance, baked into the exported model)
-    Gaussian actor + separate critic, MLP (hidden_units x num_layers, Swish), state-independent log-sigma
-    action clipping exactly like ML-Agents:  env_action = clamp(a, -3, 3) / 3
-    per-agent trajectories cut at time_horizon, GAE(lambda) with value bootstrapping on truncation / interruption
-    PPO clipped surrogate + clipped value loss + entropy bonus, advantage normalisation
-    linear or constant schedules for learning rate, beta and epsilon
-    curriculum lessons from `environment_parameters` (smoothed mean reward >= threshold after min_lesson_length)
-    custom stats from the agents (Nav/Success, Land/Error, ...) via the stats side channel -> TensorBoard + console
-    checkpoints, --resume, --initialize-from (fine-tuning, e.g. land_ppo_v3 from land_ppo_v2), ONNX export
-
-usage (Unity Editor must be closed while builds are made; training itself needs no Editor):
-    ./ubuild Builder.BuildNav
-    .venv/bin/python python/rl/ppo_train.py --config configs/nav_ppo_v1.yaml --run-id nav_torch_v1 \
-        --env Builds/NavTraining/NavTraining.x86_64 --arenas 32 --seed 1
-
-    # landing, fine-tuned from an earlier run with the measured detector noise
-    .venv/bin/python python/rl/ppo_train.py --config configs/land_ppo_v3.yaml --run-id land_torch_v3 \
-        --env Builds/LandTraining/LandTraining.x86_64 --arenas 32 --initialize-from results/torch_runs/land_torch_v2
-
-    # export a checkpoint only, and install it for the mission / demo
-    .venv/bin/python python/rl/ppo_train.py --config configs/nav_ppo_v1.yaml --run-id nav_torch_v1 \
-        --export-only --install-as nav_torch_v1
-
-outputs: results/torch_runs/<run-id>/{checkpoint.pt, <Behavior>.onnx, config.yaml, events.* (TensorBoard), log.csv}
-"""
 import argparse
 import copy
 import csv
@@ -722,7 +687,7 @@ def install(onnx_path: str, name: str):
 
 
 def parse_args(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(description="Standalone PPO trainer for the Communication Drone policies")
     ap.add_argument("--config", required=True, help="trainer YAML, e.g. configs/nav_ppo_v1.yaml")
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--behavior", default=None, help="behavior name if the YAML defines several")

@@ -1,0 +1,55 @@
+# Run: land_ppo_v2 — landing PPO; reward change vs v1 only (curriculum unchanged)
+# Gust curriculum 0 -> 1.5 -> 3 -> 4.5 m/s (fast-mode gust gain 0.33, matched to the full quadrotor). Noise: VisionNoiseParams defaults (placeholder until the detector is measured).
+# Reward v2: v1 terms + potential shaping Phi=-0.1(alt+2*offset); timeout penalty -1 (v1: -0.5, policy learned to hover).
+behaviors:
+  Land:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 1024
+      buffer_size: 20480
+      learning_rate: 3.0e-4
+      beta: 3.0e-3
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: constant
+    network_settings:
+      normalize: true
+      hidden_units: 128
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    max_steps: 8000000
+    time_horizon: 128
+    summary_freq: 20000
+    checkpoint_interval: 500000
+    keep_checkpoints: 20
+environment_parameters:
+  gust:
+    curriculum:
+      - name: Calm
+        completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 2000, threshold: 1.3}
+        value: 0.0
+      - name: Gust1
+        completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 2000, threshold: 1.2}
+        value: 1.5
+      - name: Gust2
+        completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 3000, threshold: 1.1}
+        value: 3.0
+      - name: Gust3
+        value: 4.5
+  wind_mean:
+    curriculum:
+      - name: Calm
+        completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 2000, threshold: 1.3}
+        value: 0.0
+      - name: Gust1
+        completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 2000, threshold: 1.2}
+        value: 0.5
+      - name: Gust2
+        completion_criteria: {measure: reward, behavior: Land, signal_smoothing: true, min_lesson_length: 3000, threshold: 1.1}
+        value: 1.0
+      - name: Gust3
+        value: 1.5

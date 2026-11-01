@@ -196,6 +196,20 @@ for i, (v, l) in enumerate([("Full", "1.2 kg quadrotor, 4 rotors, cascaded PID, 
     stat(s, x + 0.15, 5.15, 2.6, v, l, vsize=28)
 s.notes_slide.notes_text_frame.text = "Trained on Fast, tested on Full: 3–6 points lost per flight; fine-tuning on Full is future work."
 
+# ---------------------------------------------------------------- RL architecture
+s = new()
+title(s, "RL architecture: actor-critic PPO with Unity in the loop")
+picture(s, "docs/report_assets/drones/fig_rl_architecture.png", 0.4, 1.2, 12.5, 6.0)
+s.notes_slide.notes_text_frame.text = ("Environment (Unity, C#): 32 arenas give observations and rewards. Trainer (PyTorch): normaliser, actor and critic MLPs, "
+    "trajectory buffer, GAE, clipped PPO update, curriculum manager. Deployment: the actor is exported to ONNX and run by the mission at 10 Hz.")
+
+# ---------------------------------------------------------------- PPO flowchart
+s = new()
+title(s, "PPO training loop")
+picture(s, "docs/report_assets/drones/fig_ppo_flowchart.png", 0.4, 1.2, 12.5, 6.0)
+s.notes_slide.notes_text_frame.text = ("Collect experience with the current policy until the buffer is full (32,768 steps for navigation), compute advantages "
+    "with GAE, run 3 epochs of clipped PPO updates, advance the curriculum when the smoothed reward passes the lesson threshold, repeat until max_steps, export ONNX.")
+
 # ---------------------------------------------------------------- 6 navigation RL
 s = new()
 title(s, "Navigation PPO: unknown streets, no map")
